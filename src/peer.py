@@ -1,5 +1,7 @@
 import sys
 import os
+from typing import List
+
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import select
 import util.simsocket as simsocket
@@ -10,50 +12,209 @@ import hashlib
 import argparse
 import pickle
 
-"""
-This is CS305 project skeleton code.
-Please refer to the example files - example/dumpreceiver.py and example/dumpsender.py - to learn how to play with this skeleton.
-"""
-
+# constants
 BUF_SIZE = 1400
+CHUNK_SIZE = 512 * 1024
+HASH_SIZE = 20
 HEADER_LEN = struct.calcsize("HBBHHII")
+MAGIC_VAL = 52305
+TEAM_CODE = 28
 
-def process_download(sock,chunkfile, outputfile):
-    '''
-    if DOWNLOAD is used, the peer will keep getting files until it is done
-    '''
-    print('PROCESS DOWNLOAD SKELETON CODE CALLED.  Fill me in!')
+# packet types
+WHOHAS = 0
+IHAVE = 1
+GET = 2
+DATA = 3
+ACK = 4
+DENIED = 5
+
+
+class Peer:
+    sock = None
+
+    def __init__(self, idx, hostname, port):
+        self.idx, self.hostname, self.port = idx, hostname, port
+        self.receive_hash = ""
+        self.send_chunk = b''
+        self.free = True
+
+    def __str__(self):
+        s = f"peer[{self.idx}] at {self.hostname}:{self.port}"
+        return s
+
+    def send(self, type_code: int, data: bytes = None):
+        header = struct.pack("!HBBHHII",
+                             socket.htons(52305),
+                             TEAM_CODE,
+                             type_code,
+                             socket.htons(HEADER_LEN),
+                             socket.htons(HEADER_LEN + (len(data) if data else 0)),
+                             socket.htonl(0),
+                             socket.htonl(0))
+        self.sock.sendto(header + (data if data else b''), (self.hostname, self.port))
+
+    def send_data(self):
+        # TODO: RDT and Congestion
+        pass
+
+    def receive_data(self, data: bytes, seq):
+        # TODO: RDT and Congestion
+        pass
+
+    def receive_ack(self, ack):
+        # TODO: RDT and Congestion
+        pass
+
+
+class Download:
+    def __init__(self, chunk_file, output_file):
+        with open(chunk_file, 'r') as file:
+            self.requests = [line.strip().split(" ")[1] for line in file]
+        self.received = dict()
+        self.remaining = len(self.requests)
+        self.output_file = output_file
+        self.request_idx = 0
+
+    def append_data(self, chunk_hash, data: bytes):
+        """
+        Appends a single packet's data to its corresponding chunk.
+
+        :type chunk_hash: str
+        :param chunk_hash: the hash for the downloading chunk
+        :type data: bytes
+        :param data: the data in the packet
+        """
+        if chunk_hash in self.received:
+            self.received[chunk_hash] += data
+            if len(self.received[chunk_hash]) == CHUNK_SIZE:
+                self.remaining -= 1
+                config.haschunks[chunk_hash] = self.received[chunk_hash]
+                # verbose debug
+                if 0 < config.verbose:
+                    sha1 = hashlib.sha1()
+                    sha1.update(self.received[chunk_hash])
+                    print(f"Received 1 chunk\n"
+                          f"\texpected hash : {chunk_hash}\n"
+                          f"\tgot hash      : {sha1.hexdigest()}")
+
+    def broadcast_request(self):
+        """
+        Broadcast the next request in a circular list to all peers.
+        """
+        self.request_idx %= len(self.requests)  # ensure that the index is in bound
+        for _, peer in peers.items():
+            peer.send(WHOHAS, bytes.fromhex(self.requests[self.request_idx]))
+        self.request_idx += 1  # prepare to broadcast the next request
+
+    def remove_request(self, chunk_hash):
+        self.requests.remove(chunk_hash)
+
+    def completed(self):
+        return self.remaining == 0
+
+    def dump(self):
+        """
+        Dumps the received chunks to a file in dictionary format and prints "GOT".
+        """
+        with open(self.output_file, "wb") as file:
+            pickle.dump(self.received, file)
+        print(f"GOT {self.output_file}")
+
+
+# global variables
+peers = dict()
+connection_cnt = 0
+download: Download = None
+config = None
 
 
 def process_inbound_udp(sock):
-    # Receive pkt
-    pkt, from_addr = sock.recvfrom(BUF_SIZE)
-    Magic, Team, Type,hlen, plen, Seq, Ack= struct.unpack("HBBHHII", pkt[:HEADER_LEN])
-    data = pkt[HEADER_LEN:]
-    print("SKELETON CODE CALLED, FILL this!")
+    """
+    Processes the UDP packet received.
+    """
+    packet, from_addr = sock.recvfrom(BUF_SIZE)
+    # TODO: RDT and Congestion (new fields if needed)
+    magic, team, type_code, header_len, packet_len, seq, ack = struct.unpack("!HBBHHII", packet[:HEADER_LEN])
+    data = packet[HEADER_LEN:]
+    # get peer
+    peer = peers[from_addr]
+    # check magic value
+    if magic != MAGIC_VAL:
+        print(f"Magic value [{magic}] incorrect: endianness incorrect or packet is spoofed")
+    # got WHOHAS
+    if type_code == WHOHAS:
+        # get the request chunk's hash
+        chunk_hash = bytes.hex(data[:HASH_SIZE])
+        # verbose debug
+        if 0 < config.verbose: print(f"Received WHOHAS requesting for [{chunk_hash}]\n"
+                                     f"\thas: {list(config.haschunks.keys())}")
+        if connection_cnt == config.max_conn:
+            if 0 < config.verbose: print(f"Connection denied due to connection limit reached")
+            peer.send(DENIED)  # denied
+        elif chunk_hash in config.haschunks and peer.free:  # chunk needed and peer free
+            if 0 < config.verbose: print(f"Trying to establish connection with {peer}")
+            peer.send(IHAVE, data[:HASH_SIZE])  # send back the hash requested
+            peer.send_chunk = config.haschunks[chunk_hash]  # prepare chunk to be sent
+    # got IHAVE
+    elif type_code == IHAVE:
+        # get the sender's chunk's hash
+        chunk_hash = bytes.hex(data[:HASH_SIZE])
+        # verbose debug
+        if 0 < config.verbose: print(f"Received IHAVE with [{chunk_hash}]\n"
+                                     f"\tneeds: {list(download.requests)}")
+        if chunk_hash in download.requests:
+            if 0 < config.verbose: print(f"Agreed to establish connection with {peer}")
+            download.remove_request(chunk_hash)
+            peer.receive_hash = chunk_hash  # hash for the chunk to be received
+            peer.send(GET)
+    # got GET
+    elif type_code == GET:
+        if 0 < config.verbose: print(f"Connection establish with {peer}")
+        peer.free = False  # start sending send_chunk
+    # got DATA
+    elif type_code == DATA:
+        # TODO: RDT and Congestion
+        peer.receive_data(data, socket.ntohl(seq))
+        download.append_data(peer.receive_hash, data)
+    # got ACK
+    elif type_code == ACK:
+        # TODO: RDT and Congestion
+        ack = socket.ntohl(ack)
+        peer.receive_ack(ack)
+        if CHUNK_SIZE <= ack:
+            peer.free = True  # chunk transfer completed
+            # verbose debug
+            if 0 < config.verbose: print(f"Sent 1 chunk with hash: {peer.chunk_hash}")
 
-def process_user_input(sock):
-    command, chunkf, outf = input().split(' ')
-    if command == 'DOWNLOAD':
-        process_download(sock ,chunkf, outf)
-    else:
-        pass
 
 def peer_run(config):
-    addr = (config.ip, config.port)
-    sock = simsocket.SimSocket(config.identity, addr, verbose=config.verbose)
+    address = (config.ip, config.port)
+    sock = simsocket.SimSocket(config.identity, address, verbose=config.verbose)
+
+    Peer.sock = sock
+    global peers, download
+    for (idx, hostname, port) in config.peers:
+        idx, port = int(idx), int(port)
+        if idx != config.identity:
+            peer = Peer(idx, hostname, port)
+            peers[(hostname, port)] = peer
 
     try:
         while True:
-            ready = select.select([sock, sys.stdin],[],[], 0.1)
+            ready = select.select([sock, sys.stdin], [], [], 0.1)
             read_ready = ready[0]
-            if len(read_ready) > 0:
+            if len(read_ready) > 0:  # a packet or input have been received
                 if sock in read_ready:
                     process_inbound_udp(sock)
                 if sys.stdin in read_ready:
-                    process_user_input(sock)
-            else:
-                # No pkt nor input arrives during this period 
+                    # process user input
+                    command, chunk_file, output_file = input().split(" ")
+                    if command == 'DOWNLOAD':
+                        download = Download(chunk_file, output_file)
+            else:  # free to send packets
+                if download: download.broadcast_request()  # ask for a chunk
+                for _, peer in peers.items():
+                    if not peer.free: peer.send_data()  # send data for connected peers
                 pass
     except KeyboardInterrupt:
         pass
