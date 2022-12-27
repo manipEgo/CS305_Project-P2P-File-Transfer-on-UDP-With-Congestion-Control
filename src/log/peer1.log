@@ -1,0 +1,2 @@
+2022-12-26 15:13:54,984 - PEER1_LOGGER - INFO - Start logging
+2022-12-26 15:13:54,984 - PEER1_LOGGER - WARNING - Simulator not set, using normal socket.
