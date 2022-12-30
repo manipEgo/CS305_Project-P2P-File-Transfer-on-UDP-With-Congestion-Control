@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+import math
 from typing import List
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
@@ -49,8 +50,10 @@ class Peer:
         self.beta = 0.25
         self.send_time_dict = {}
 
-        # duplicate ACKs variables
+        # duplicate ACKs && congestion control variables
         self.ack_cnt_dict = {}
+        self.cwnd = 1
+        self.ssthresh = 64
 
     def __str__(self):
         s = f"peer[{self.idx}] at {self.hostname}:{self.port}"
@@ -107,8 +110,13 @@ class Peer:
             if self.ack_cnt_dict[ack] == 3:
                 self.send_seq_list.append(ack + 1)
                 self.ack_cnt_dict[ack] = 0
+                self.reset()
         else:
             self.ack_cnt_dict[ack] = 1
+            if self.cwnd >= self.ssthresh:  # Congestion Avoidance state
+                self.cwnd = math.floor((self.cwnd+1) / self.cwnd)
+            else:  # Slow Start state
+                self.cwnd += 1
 
         # finish or continue sending
         if CHUNK_SIZE <= ack * MAX_PAYLOAD:
@@ -121,7 +129,12 @@ class Peer:
     def expect_ack(self):
         for seq, send_time in self.send_time_dict.items():
             if send_time + self.timeout_interval <= time.time():
+                self.reset()
                 self.send_seq_list.append(seq)
+
+    def reset(self):
+        self.ssthresh = max(math.floor(self.cwnd / 2), 2)
+        self.cwnd = 1
 
 
 class Download:
