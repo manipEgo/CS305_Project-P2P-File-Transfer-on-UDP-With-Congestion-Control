@@ -50,6 +50,9 @@ class Peer:
         self.send_time_dict = {}
         self.pkts_dict = {}
 
+        # duplicate ACKs variables
+        self.ack_cnt_dict = {}
+
     def __str__(self):
         s = f"peer[{self.idx}] at {self.hostname}:{self.port}"
         return s
@@ -97,9 +100,18 @@ class Peer:
         self.dev_RTT = (1 - self.beta) * self.dev_RTT + self.beta * abs(sample_RTT - self.estimated_RTT)
         self.timeout_interval = self.estimated_RTT + 4 * self.dev_RTT
         
-        # stop expecting this ack
-        self.send_time_dict.pop(ack)
-        self.pkts_dict.pop(ack)
+        # stop expecting this ACK
+        self.send_time_dict.pop(ack, None)
+        self.pkts_dict.pop(ack, None)
+
+        # count duplicate ACKs
+        if ack in self.ack_cnt_dict.keys():
+            self.ack_cnt_dict[ack] += 1
+            if self.ack_cnt_dict[ack] == 3:
+                self.send_seq_list.append(ack + 1)
+                self.ack_cnt_dict[ack] = 0
+        else:
+            self.ack_cnt_dict[ack] = 1
 
         # finish or continue sending
         if CHUNK_SIZE <= ack * MAX_PAYLOAD:
