@@ -187,7 +187,6 @@ def process_inbound_udp(sock: simsocket.SimSocket):
     elif type_code == GET:
         if 0 < CONFIG.verbose: print(f"Connection establish with {peer}")
         peer.free = False  # start sending send_chunk
-        peer.send_data()
     # got DATA
     elif type_code == DATA:
         # TODO: RDT and Congestion
