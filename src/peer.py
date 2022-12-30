@@ -18,6 +18,7 @@ CHUNK_SIZE = 512 * 1024
 HASH_SIZE = 20
 HEADER_LEN = struct.calcsize("HBBHHII")
 MAGIC_VAL = 52305
+MAX_PAYLOAD = 1024
 TEAM_CODE = 28
 
 # packet types
@@ -193,7 +194,7 @@ def process_inbound_udp(sock: simsocket.SimSocket):
         # TODO: RDT and Congestion
         ack = socket.ntohl(ack)
         peer.receive_ack(ack)
-        if CHUNK_SIZE <= ack:
+        if CHUNK_SIZE <= ack * MAX_PAYLOAD:
             peer.free = True  # chunk transfer completed
             # verbose debug
             if 0 < CONFIG.verbose: print(f"Sent 1 chunk with hash: {peer.chunk_hash}")
