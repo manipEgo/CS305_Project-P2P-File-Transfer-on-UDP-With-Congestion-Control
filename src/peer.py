@@ -268,12 +268,11 @@ def peer_run(config):
                     command, chunk_file, output_file = input().split(" ")
                     if command == 'DOWNLOAD':
                         DOWNLOAD = Download(chunk_file, output_file)
-            else:  # free to send packets
-                if DOWNLOAD: DOWNLOAD.broadcast_request()  # ask for a chunk
-                for _, peer in PEERS.items():
-                    if not peer.free: peer.send_data()  # send data for connected peers
-                    peer.expect_ack()
-                pass
+            if DOWNLOAD: DOWNLOAD.broadcast_request()  # ask for a chunk
+            for _, peer in PEERS.items():
+                if not peer.free: peer.send_data()  # send data for connected peers
+                peer.expect_ack()
+            pass
     except KeyboardInterrupt:
         pass
     finally:
