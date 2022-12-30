@@ -30,7 +30,7 @@ DENIED = 5
 
 
 class Peer:
-    sock = None
+    __sock = None
 
     def __init__(self, idx, hostname, port):
         self.idx, self.hostname, self.port = idx, hostname, port
@@ -41,6 +41,14 @@ class Peer:
     def __str__(self):
         s = f"peer[{self.idx}] at {self.hostname}:{self.port}"
         return s
+
+    @property
+    def sock(self):
+        return Peer.__sock
+
+    @sock.setter
+    def sock(self, sock: simsocket.SimSocket):
+        Peer.__sock = sock
 
     def send(self, type_code: int, data: bytes = None):
         header = struct.pack("!HBBHHII",
