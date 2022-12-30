@@ -136,7 +136,7 @@ DOWNLOAD: Download = None
 CONFIG = None
 
 
-def process_inbound_udp(sock):
+def process_inbound_udp(sock: simsocket.SimSocket):
     """
     Processes the UDP packet received.
     """
@@ -145,7 +145,7 @@ def process_inbound_udp(sock):
     magic, team, type_code, header_len, packet_len, seq, ack = struct.unpack("!HBBHHII", packet[:HEADER_LEN])
     data = packet[HEADER_LEN:]
     # get peer
-    peer = PEERS[from_addr]
+    peer: Peer = PEERS[from_addr]
     # check magic value
     if magic != MAGIC_VAL:
         print(f"Magic value [{magic}] incorrect: endianness incorrect or packet is spoofed")
@@ -179,6 +179,7 @@ def process_inbound_udp(sock):
     elif type_code == GET:
         if 0 < CONFIG.verbose: print(f"Connection establish with {peer}")
         peer.free = False  # start sending send_chunk
+        peer.send_data()
     # got DATA
     elif type_code == DATA:
         # TODO: RDT and Congestion
