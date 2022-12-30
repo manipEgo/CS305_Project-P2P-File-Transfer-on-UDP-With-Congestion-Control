@@ -94,16 +94,18 @@ class Download:
         """
         if chunk_hash in self.received:
             self.received[chunk_hash] += data
-            if len(self.received[chunk_hash]) == CHUNK_SIZE:
-                self.remaining -= 1
-                CONFIG.haschunks[chunk_hash] = self.received[chunk_hash]
-                # verbose debug
-                if 0 < CONFIG.verbose:
-                    sha1 = hashlib.sha1()
-                    sha1.update(self.received[chunk_hash])
-                    print(f"Received 1 chunk\n"
-                          f"\texpected hash : {chunk_hash}\n"
-                          f"\tgot hash      : {sha1.hexdigest()}")
+        else:
+            self.received[chunk_hash] = data
+        if len(self.received[chunk_hash]) == CHUNK_SIZE:
+            self.remaining -= 1
+            CONFIG.haschunks[chunk_hash] = self.received[chunk_hash]
+            # verbose debug
+            if 0 < CONFIG.verbose:
+                sha1 = hashlib.sha1()
+                sha1.update(self.received[chunk_hash])
+                print(f"Received 1 chunk\n"
+                        f"\texpected hash : {chunk_hash}\n"
+                        f"\tgot hash      : {sha1.hexdigest()}")
 
     def broadcast_request(self):
         """
