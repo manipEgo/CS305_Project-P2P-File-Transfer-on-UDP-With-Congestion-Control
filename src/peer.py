@@ -84,10 +84,11 @@ class Peer:
             self.send(DATA, seq=self.send_seq,
                       data=CONFIG.haschunks[self.send_chunk][left:right])
             self.send_seq = 0
+        # TODO: Congestion Control
 
     def receive_data(self, data: bytes, seq):
-        # TODO: RDT and Congestion
-        pass
+        self.send(ACK, ack=seq)
+        # TODO: Congestion Control
 
     def receive_ack(self, ack):
         # estimate RTT
