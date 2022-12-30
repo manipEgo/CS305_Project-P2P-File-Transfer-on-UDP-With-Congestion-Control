@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 from typing import List
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
@@ -36,6 +37,10 @@ class Peer:
     def __init__(self, idx, hostname, port):
         self.idx, self.hostname, self.port = idx, hostname, port
         self.receive_hash = ""
+        # TODO: estimate timeout_interval
+        self.timeout_interval = 114.0
+        self.timeout_dict = {}
+        self.pkts_dict = {}
         self.send_chunk = b''
         self.free = True
 
@@ -60,7 +65,10 @@ class Peer:
                              socket.htons(HEADER_LEN + (len(data) if data else 0)),
                              socket.htonl(seq),
                              socket.htonl(ack))
-        self.sock.sendto(header + (data if data else b''), (self.hostname, self.port))
+        content = header + (data if data else b'')
+        self.sock.sendto(content, (self.hostname, self.port))
+        self.timeout_dict[seq] = time.time() + self.timeout_interval
+        self.pkts_dict[seq] = content
 
     def send_data(self):
         # TODO: RDT and Congestion
@@ -75,8 +83,10 @@ class Peer:
         pass
     
     def expect_ack(self):
-        # TODO: check timeout
-        pass
+        for seq, out_time in self.timeout_dict.items():
+            if out_time <= time.time():
+                self.sock.sendto(self.pkts_dict[seq], (self.hostname, self.port))
+                self.timeout_dict[seq] = time.time() + self.timeout_interval
 
 
 class Download:
