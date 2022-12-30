@@ -99,6 +99,7 @@ class Download:
         if len(self.received[chunk_hash]) == CHUNK_SIZE:
             self.remaining -= 1
             CONFIG.haschunks[chunk_hash] = self.received[chunk_hash]
+            self.dump()
             # verbose debug
             if 0 < CONFIG.verbose:
                 sha1 = hashlib.sha1()
