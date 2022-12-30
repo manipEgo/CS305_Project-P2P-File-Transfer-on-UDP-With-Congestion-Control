@@ -96,9 +96,9 @@ class Download:
             self.received[chunk_hash] += data
             if len(self.received[chunk_hash]) == CHUNK_SIZE:
                 self.remaining -= 1
-                config.haschunks[chunk_hash] = self.received[chunk_hash]
+                CONFIG.haschunks[chunk_hash] = self.received[chunk_hash]
                 # verbose debug
-                if 0 < config.verbose:
+                if 0 < CONFIG.verbose:
                     sha1 = hashlib.sha1()
                     sha1.update(self.received[chunk_hash])
                     print(f"Received 1 chunk\n"
@@ -110,7 +110,7 @@ class Download:
         Broadcast the next request in a circular list to all peers.
         """
         self.request_idx %= len(self.requests)  # ensure that the index is in bound
-        for _, peer in peers.items():
+        for _, peer in PEERS.items():
             peer.send(WHOHAS, bytes.fromhex(self.requests[self.request_idx]))
         self.request_idx += 1  # prepare to broadcast the next request
 
@@ -130,10 +130,10 @@ class Download:
 
 
 # global variables
-peers = dict()
-connection_cnt = 0
-download: Download = None
-config = None
+PEERS = dict()
+CONNECTION_CNT = 0
+DOWNLOAD: Download = None
+CONFIG = None
 
 
 def process_inbound_udp(sock):
@@ -145,7 +145,7 @@ def process_inbound_udp(sock):
     magic, team, type_code, header_len, packet_len, seq, ack = struct.unpack("!HBBHHII", packet[:HEADER_LEN])
     data = packet[HEADER_LEN:]
     # get peer
-    peer = peers[from_addr]
+    peer = PEERS[from_addr]
     # check magic value
     if magic != MAGIC_VAL:
         print(f"Magic value [{magic}] incorrect: endianness incorrect or packet is spoofed")
@@ -154,36 +154,36 @@ def process_inbound_udp(sock):
         # get the request chunk's hash
         chunk_hash = bytes.hex(data[:HASH_SIZE])
         # verbose debug
-        if 0 < config.verbose: print(f"Received WHOHAS requesting for [{chunk_hash}]\n"
-                                     f"\thas: {list(config.haschunks.keys())}")
-        if connection_cnt == config.max_conn:
-            if 0 < config.verbose: print(f"Connection denied due to connection limit reached")
+        if 0 < CONFIG.verbose: print(f"Received WHOHAS requesting for [{chunk_hash}]\n"
+                                     f"\thas: {list(CONFIG.haschunks.keys())}")
+        if CONNECTION_CNT == CONFIG.max_conn:
+            if 0 < CONFIG.verbose: print(f"Connection denied due to connection limit reached")
             peer.send(DENIED)  # denied
-        elif chunk_hash in config.haschunks and peer.free:  # chunk needed and peer free
-            if 0 < config.verbose: print(f"Trying to establish connection with {peer}")
+        elif chunk_hash in CONFIG.haschunks and peer.free:  # chunk needed and peer free
+            if 0 < CONFIG.verbose: print(f"Trying to establish connection with {peer}")
             peer.send(IHAVE, data[:HASH_SIZE])  # send back the hash requested
-            peer.send_chunk = config.haschunks[chunk_hash]  # prepare chunk to be sent
+            peer.send_chunk = CONFIG.haschunks[chunk_hash]  # prepare chunk to be sent
     # got IHAVE
     elif type_code == IHAVE:
         # get the sender's chunk's hash
         chunk_hash = bytes.hex(data[:HASH_SIZE])
         # verbose debug
-        if 0 < config.verbose: print(f"Received IHAVE with [{chunk_hash}]\n"
-                                     f"\tneeds: {list(download.requests)}")
-        if chunk_hash in download.requests:
-            if 0 < config.verbose: print(f"Agreed to establish connection with {peer}")
-            download.remove_request(chunk_hash)
+        if 0 < CONFIG.verbose: print(f"Received IHAVE with [{chunk_hash}]\n"
+                                     f"\tneeds: {list(DOWNLOAD.requests)}")
+        if chunk_hash in DOWNLOAD.requests:
+            if 0 < CONFIG.verbose: print(f"Agreed to establish connection with {peer}")
+            DOWNLOAD.remove_request(chunk_hash)
             peer.receive_hash = chunk_hash  # hash for the chunk to be received
             peer.send(GET)
     # got GET
     elif type_code == GET:
-        if 0 < config.verbose: print(f"Connection establish with {peer}")
+        if 0 < CONFIG.verbose: print(f"Connection establish with {peer}")
         peer.free = False  # start sending send_chunk
     # got DATA
     elif type_code == DATA:
         # TODO: RDT and Congestion
         peer.receive_data(data, socket.ntohl(seq))
-        download.append_data(peer.receive_hash, data)
+        DOWNLOAD.append_data(peer.receive_hash, data)
     # got ACK
     elif type_code == ACK:
         # TODO: RDT and Congestion
@@ -192,7 +192,7 @@ def process_inbound_udp(sock):
         if CHUNK_SIZE <= ack:
             peer.free = True  # chunk transfer completed
             # verbose debug
-            if 0 < config.verbose: print(f"Sent 1 chunk with hash: {peer.chunk_hash}")
+            if 0 < CONFIG.verbose: print(f"Sent 1 chunk with hash: {peer.chunk_hash}")
 
 
 def peer_run(config):
@@ -200,12 +200,12 @@ def peer_run(config):
     sock = simsocket.SimSocket(config.identity, address, verbose=config.verbose)
 
     Peer.sock = sock
-    global peers, download
+    global PEERS, DOWNLOAD
     for (idx, hostname, port) in config.peers:
         idx, port = int(idx), int(port)
         if idx != config.identity:
             peer = Peer(idx, hostname, port)
-            peers[(hostname, port)] = peer
+            PEERS[(hostname, port)] = peer
 
     try:
         while True:
@@ -218,10 +218,10 @@ def peer_run(config):
                     # process user input
                     command, chunk_file, output_file = input().split(" ")
                     if command == 'DOWNLOAD':
-                        download = Download(chunk_file, output_file)
+                        DOWNLOAD = Download(chunk_file, output_file)
             else:  # free to send packets
-                if download: download.broadcast_request()  # ask for a chunk
-                for _, peer in peers.items():
+                if DOWNLOAD: DOWNLOAD.broadcast_request()  # ask for a chunk
+                for _, peer in PEERS.items():
                     if not peer.free: peer.send_data()  # send data for connected peers
                 pass
     except KeyboardInterrupt:
@@ -249,5 +249,5 @@ if __name__ == '__main__':
     parser.add_argument('-t', type=int, help="pre-defined timeout", default=0)
     args = parser.parse_args()
 
-    config = bt_utils.BtConfig(args)
-    peer_run(config)
+    CONFIG = bt_utils.BtConfig(args)
+    peer_run(CONFIG)
