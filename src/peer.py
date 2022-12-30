@@ -38,6 +38,7 @@ class Peer:
         self.idx, self.hostname, self.port = idx, hostname, port
         self.receive_hash = ""
         self.send_chunk = b''
+        self.send_seq = 0
         self.free = True
 
         # timeout variables
@@ -77,8 +78,12 @@ class Peer:
             self.pkts_dict[seq] = content
 
     def send_data(self):
-        # TODO: RDT and Congestion
-        pass
+        if self.send_seq > 0:
+            left = (self.send_seq - 1) * MAX_PAYLOAD
+            right = min(self.send_seq * MAX_PAYLOAD, CHUNK_SIZE)
+            self.send(DATA, seq=self.send_seq,
+                      data=CONFIG.haschunks[self.send_chunk][left:right])
+            self.send_seq = 0
 
     def receive_data(self, data: bytes, seq):
         # TODO: RDT and Congestion
@@ -100,6 +105,8 @@ class Peer:
             self.free = True  # chunk transfer completed
             # verbose debug
             if 0 < CONFIG.verbose: print(f"Sent 1 chunk with ack: {ack}")
+        else:
+            self.send_seq = ack + 1
     
     def expect_ack(self):
         for seq, send_time in self.send_time_dict.items():
@@ -216,6 +223,7 @@ def process_inbound_udp(sock: simsocket.SimSocket):
     elif type_code == GET:
         if 0 < CONFIG.verbose: print(f"Connection establish with {peer}")
         peer.free = False  # start sending send_chunk
+        peer.send_seq = 1
     # got DATA
     elif type_code == DATA:
         # TODO: RDT and Congestion
