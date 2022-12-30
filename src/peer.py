@@ -73,6 +73,10 @@ class Peer:
     def receive_ack(self, ack):
         # TODO: RDT and Congestion
         pass
+    
+    def expect_ack(self):
+        # TODO: check timeout
+        pass
 
 
 class Download:
@@ -228,6 +232,7 @@ def peer_run(config):
                 if DOWNLOAD: DOWNLOAD.broadcast_request()  # ask for a chunk
                 for _, peer in PEERS.items():
                     if not peer.free: peer.send_data()  # send data for connected peers
+                    peer.expect_ack()
                 pass
     except KeyboardInterrupt:
         pass
