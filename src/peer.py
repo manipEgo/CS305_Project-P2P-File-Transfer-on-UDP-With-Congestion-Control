@@ -37,12 +37,17 @@ class Peer:
     def __init__(self, idx, hostname, port):
         self.idx, self.hostname, self.port = idx, hostname, port
         self.receive_hash = ""
-        # TODO: estimate timeout_interval
-        self.timeout_interval = 114.0
-        self.timeout_dict = {}
-        self.pkts_dict = {}
         self.send_chunk = b''
         self.free = True
+
+        # timeout variables
+        self.timeout_interval = 114.0
+        self.estimated_RTT = 0.0
+        self.dev_RTT = 0.0
+        self.alpha = 0.125
+        self.beta = 0.25
+        self.send_time_dict = {}
+        self.pkts_dict = {}
 
     def __str__(self):
         s = f"peer[{self.idx}] at {self.hostname}:{self.port}"
@@ -67,7 +72,7 @@ class Peer:
                              socket.htonl(ack))
         content = header + (data if data else b'')
         self.sock.sendto(content, (self.hostname, self.port))
-        self.timeout_dict[seq] = time.time() + self.timeout_interval
+        self.send_time_dict[seq] = time.time()
         self.pkts_dict[seq] = content
 
     def send_data(self):
@@ -79,14 +84,27 @@ class Peer:
         pass
 
     def receive_ack(self, ack):
-        # TODO: RDT and Congestion
-        pass
+        # estimate RTT
+        sample_RTT = time.time() - self.send_time_dict[ack]
+        self.estimated_RTT = (1 - self.alpha) * self.estimated_RTT + self.alpha * sample_RTT
+        self.dev_RTT = (1 - self.beta) * self.dev_RTT + self.beta * abs(sample_RTT - self.estimated_RTT)
+        self.timeout_interval = self.estimated_RTT + 4 * self.dev_RTT
+        
+        # stop expecting this ack
+        self.send_time_dict.pop(ack)
+        self.pkts_dict.pop(ack)
+
+        # finish or continue sending
+        if CHUNK_SIZE <= ack * MAX_PAYLOAD:
+            self.free = True  # chunk transfer completed
+            # verbose debug
+            if 0 < CONFIG.verbose: print(f"Sent 1 chunk with ack: {ack}")
     
     def expect_ack(self):
-        for seq, out_time in self.timeout_dict.items():
-            if out_time <= time.time():
+        for seq, send_time in self.send_time_dict.items():
+            if send_time + self.timeout_interval <= time.time():
                 self.sock.sendto(self.pkts_dict[seq], (self.hostname, self.port))
-                self.timeout_dict[seq] = time.time() + self.timeout_interval
+                self.send_time_dict[seq] = time.time()
 
 
 class Download:
@@ -205,12 +223,7 @@ def process_inbound_udp(sock: simsocket.SimSocket):
     # got ACK
     elif type_code == ACK:
         # TODO: RDT and Congestion
-        ack = socket.ntohl(ack)
-        peer.receive_ack(ack)
-        if CHUNK_SIZE <= ack * MAX_PAYLOAD:
-            peer.free = True  # chunk transfer completed
-            # verbose debug
-            if 0 < CONFIG.verbose: print(f"Sent 1 chunk with hash: {peer.chunk_hash}")
+        peer.receive_ack(socket.ntohl(ack))
 
 
 def peer_run(config):
