@@ -48,7 +48,6 @@ class Peer:
         self.alpha = 0.125
         self.beta = 0.25
         self.send_time_dict = {}
-        self.pkts_dict = {}
 
         # duplicate ACKs variables
         self.ack_cnt_dict = {}
@@ -78,7 +77,6 @@ class Peer:
         self.sock.sendto(content, (self.hostname, self.port))
         if type_code == DATA:
             self.send_time_dict[seq] = time.time()
-            self.pkts_dict[seq] = content
 
     def send_data(self):
         while len(self.send_seq_list) > 0:
@@ -102,7 +100,6 @@ class Peer:
         
         # stop expecting this ACK
         self.send_time_dict.pop(ack, None)
-        self.pkts_dict.pop(ack, None)
 
         # count duplicate ACKs
         if ack in self.ack_cnt_dict.keys():
@@ -124,8 +121,7 @@ class Peer:
     def expect_ack(self):
         for seq, send_time in self.send_time_dict.items():
             if send_time + self.timeout_interval <= time.time():
-                self.sock.sendto(self.pkts_dict[seq], (self.hostname, self.port))
-                self.send_time_dict[seq] = time.time()
+                self.send_seq_list.append(seq)
 
 
 class Download:
