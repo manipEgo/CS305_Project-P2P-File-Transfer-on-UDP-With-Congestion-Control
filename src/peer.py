@@ -51,15 +51,15 @@ class Peer:
     def sock(self, sock: simsocket.SimSocket):
         Peer.__sock = sock
 
-    def send(self, type_code: int, data: bytes = None):
+    def send(self, type_code: int, seq: int = 0, ack: int = 0, data: bytes = None):
         header = struct.pack("!HBBHHII",
                              socket.htons(52305),
                              TEAM_CODE,
                              type_code,
                              socket.htons(HEADER_LEN),
                              socket.htons(HEADER_LEN + (len(data) if data else 0)),
-                             socket.htonl(0),
-                             socket.htonl(0))
+                             socket.htonl(seq),
+                             socket.htonl(ack))
         self.sock.sendto(header + (data if data else b''), (self.hostname, self.port))
 
     def send_data(self):
@@ -119,7 +119,7 @@ class Download:
         """
         self.request_idx %= len(self.requests)  # ensure that the index is in bound
         for _, peer in PEERS.items():
-            peer.send(WHOHAS, bytes.fromhex(self.requests[self.request_idx]))
+            peer.send(WHOHAS, data=bytes.fromhex(self.requests[self.request_idx]))
         self.request_idx += 1  # prepare to broadcast the next request
 
     def remove_request(self, chunk_hash):
@@ -169,7 +169,7 @@ def process_inbound_udp(sock: simsocket.SimSocket):
             peer.send(DENIED)  # denied
         elif chunk_hash in CONFIG.haschunks and peer.free:  # chunk needed and peer free
             if 0 < CONFIG.verbose: print(f"Trying to establish connection with {peer}")
-            peer.send(IHAVE, data[:HASH_SIZE])  # send back the hash requested
+            peer.send(IHAVE, data=data[:HASH_SIZE])  # send back the hash requested
             peer.send_chunk = CONFIG.haschunks[chunk_hash]  # prepare chunk to be sent
     # got IHAVE
     elif type_code == IHAVE:
