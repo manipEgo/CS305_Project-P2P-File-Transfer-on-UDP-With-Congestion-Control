@@ -72,8 +72,9 @@ class Peer:
                              socket.htonl(ack))
         content = header + (data if data else b'')
         self.sock.sendto(content, (self.hostname, self.port))
-        self.send_time_dict[seq] = time.time()
-        self.pkts_dict[seq] = content
+        if type_code == DATA:
+            self.send_time_dict[seq] = time.time()
+            self.pkts_dict[seq] = content
 
     def send_data(self):
         # TODO: RDT and Congestion
