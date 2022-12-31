@@ -101,22 +101,18 @@ class Peer:
     def send_data(self):
         cnt = 0
         while len(self.send_seq_list) > 0 and cnt <= self.cwnd:
-            if len(self.send_time_dict) == 0:
-                cnt = 0
             seq = self.send_seq_list.pop()
             left = (seq - 1) * MAX_PAYLOAD
             right = min(seq * MAX_PAYLOAD, CHUNK_SIZE)
-            if 0 < CONFIG.verbose: lprint(f"Sent data[{left}:{right}] to {self}")
             self.send(DATA,
                           seq=seq,
                           data=self.send_chunk[left:right])
+            if 0 < CONFIG.verbose: lprint(f"Sent data[{left}:{right}] to {self}")
             cnt += 1
-        # TODO: Congestion Control
 
     def receive_data(self, data: bytes, seq):
         if 0 < CONFIG.verbose: lprint(f"Received data[seq={seq}] from {self}")
         self.send(ACK, ack=seq)
-        # TODO: Congestion Control
 
     def receive_ack(self, ack):
         # estimate RTT
@@ -153,8 +149,8 @@ class Peer:
     def expect_ack(self):
         for seq, send_time in self.send_time_dict.items():
             if send_time + self.timeout_interval <= time.time():
-                self.reset()
                 self.send_seq_list.append(seq)
+                self.reset()
 
     def reset(self):
         self.ssthresh = max(math.floor(self.cwnd / 2), 2)
