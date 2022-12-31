@@ -1,0 +1,8 @@
+Received WHOHAS requesting for [45acace8e984465459c893197e593c36daf653db]
+	has: ['45acace8e984465459c893197e593c36daf653db']
+Trying to establish connection with peer[1] at 127.0.0.1:48001
+Connection establish with peer[1] at 127.0.0.1:48001
+Sent data[0:1024] to peer[1] at 127.0.0.1:48001
+Sent data[1024:2048] to peer[1] at 127.0.0.1:48001
+Sent data[2048:3072] to peer[1] at 127.0.0.1:48001
+Sent data[3072:4096] to peer[1] at 127.0.0.1:48001
