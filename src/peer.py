@@ -128,9 +128,10 @@ class Peer:
         if ack in self.ack_cnt_dict.keys():
             self.ack_cnt_dict[ack] += 1
             if self.ack_cnt_dict[ack] == 3:
-                self.send_seq_list.append(ack + 1)
                 self.ack_cnt_dict[ack] = 0
                 self.reset()
+            else:
+                return
         else:
             self.ack_cnt_dict[ack] = 1
             if self.cwnd >= self.ssthresh:  # Congestion Avoidance state
@@ -140,6 +141,7 @@ class Peer:
 
         # finish or continue sending
         if CHUNK_SIZE <= ack * MAX_PAYLOAD:
+            # TODO: possible conflict between two files
             self.free = True  # chunk transfer completed
             # verbose debug
             if 0 < CONFIG.verbose: lprint(f"Sent 1 chunk with ack: {ack}")
@@ -227,7 +229,6 @@ def process_inbound_udp(sock: simsocket.SimSocket):
     Processes the UDP packet received.
     """
     packet, from_addr = sock.recvfrom(BUF_SIZE)
-    # TODO: RDT and Congestion (new fields if needed)
     magic, team, type_code, header_len, packet_len, seq, ack = struct.unpack("!HBBHHII", packet[:HEADER_LEN])
     data = packet[HEADER_LEN:]
     # get peer
@@ -268,12 +269,10 @@ def process_inbound_udp(sock: simsocket.SimSocket):
         peer.send_seq_list.append(1)
     # got DATA
     elif type_code == DATA:
-        # TODO: RDT and Congestion
         peer.receive_data(data, seq)
         DOWNLOAD.append_data(peer.receive_hash, data)
     # got ACK
     elif type_code == ACK:
-        # TODO: RDT and Congestion
         peer.receive_ack(ack)
 
 
