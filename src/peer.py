@@ -22,6 +22,8 @@ HEADER_LEN = struct.calcsize("!HBBHHII")
 MAGIC_VAL = 52305
 MAX_PAYLOAD = 1024
 TEAM_CODE = 28
+CONNECTION_TIMEOUT = 20
+REQUEST_TIMEOUT = 40
 
 # packet types
 WHOHAS = 0
@@ -58,6 +60,7 @@ class Peer:
         self.send_chunk = b''
         self.send_seq_list = []
         self.free = True
+        self.connection_timestamp = 0
 
         # timeout variables
         self.timeout_interval = 114.0
@@ -84,6 +87,38 @@ class Peer:
     def sock(self, sock: simsocket.SimSocket):
         Peer.__sock = sock
 
+    def connection_refresh(self):
+        if self.receive_hash or not self.free:
+            self.connection_timestamp = time.time()
+
+    def connection_timeout(self):
+        return (self.receive_hash or not self.free) \
+               and self.connection_timestamp + CONNECTION_TIMEOUT < time.time()
+
+    def connection_reset(self):
+        self.connection_timestamp = 0
+
+        if self.receive_hash:
+            # verbose debug
+            if 0 < CONFIG.verbose: lprint(f"{self} has stop sending chunks for {self.receive_hash}")
+            DOWNLOAD.append_request(self.receive_hash)
+            self.receive_hash = ""
+        elif not self.free:
+            self.free = True
+
+            self.timeout_interval = 114.0
+            self.estimated_RTT = 0.0
+            self.dev_RTT = 0.0
+            self.alpha = 0.125
+            self.beta = 0.25
+            self.send_time_dict = {}
+
+            self.ack_cnt_dict = {}
+            self.cwnd = 1
+            self.ssthresh = 64
+            # verbose debug
+            if 0 < CONFIG.verbose: lprint(f"No need to send to disconnected {self}")
+
     def send(self, type_code: int, seq: int = 0, ack: int = 0, data: bytes = None):
         header = struct.pack("!HBBHHII",
                              MAGIC_VAL,
@@ -105,8 +140,8 @@ class Peer:
             left = (seq - 1) * MAX_PAYLOAD
             right = min(seq * MAX_PAYLOAD, CHUNK_SIZE)
             self.send(DATA,
-                          seq=seq,
-                          data=self.send_chunk[left:right])
+                      seq=seq,
+                      data=self.send_chunk[left:right])
             if 0 < CONFIG.verbose: lprint(f"Sent data[{left}:{right}] to {self}")
             cnt += 1
 
@@ -168,30 +203,35 @@ class Download:
         self.output_file = output_file
         self.request_idx = 0
 
-    def append_data(self, chunk_hash, data: bytes):
+    def append_data(self, peer: Peer, data: bytes):
         """
         Appends a single packet's data to its corresponding chunk.
 
-        :type chunk_hash: str
-        :param chunk_hash: the hash for the downloading chunk
+        :type peer: Peer
+        :param peer: the peer sending the chunk
         :type data: bytes
         :param data: the data in the packet
         """
-        if chunk_hash in self.received:
-            self.received[chunk_hash] += data
+        if peer.receive_hash in self.received:
+            self.received[peer.receive_hash] += data
         else:
-            self.received[chunk_hash] = data
-        if len(self.received[chunk_hash]) == CHUNK_SIZE:
+            self.received[peer.receive_hash] = data
+        if len(self.received[peer.receive_hash]) == CHUNK_SIZE:
             self.remaining -= 1
-            CONFIG.haschunks[chunk_hash] = self.received[chunk_hash]
+            CONFIG.haschunks[peer.receive_hash] = self.received[peer.receive_hash]
             self.dump()
             # verbose debug
             if 0 < CONFIG.verbose:
                 sha1 = hashlib.sha1()
-                sha1.update(self.received[chunk_hash])
+                sha1.update(self.received[peer.receive_hash])
                 lprint(f"Received 1 chunk\n"
-                       f"\texpected hash : {chunk_hash}\n"
+                       f"\texpected hash : {peer.receive_hash}\n"
                        f"\tgot hash      : {sha1.hexdigest()}")
+            # clear the receiving indicator
+            peer.receive_hash = ""
+
+    def reset_broadcast(self):
+        self.request_idx = 0
 
     def broadcast_request(self):
         """
@@ -200,10 +240,26 @@ class Download:
         if self.request_idx < len(self.requests):  # ensure that the index is in bound
             for _, peer in PEERS.items():
                 peer.send(WHOHAS, data=bytes.fromhex(self.requests[self.request_idx]))
+            # verbose debug
+            if 0 < CONFIG.verbose: lprint(f"Routine broadcasting for {self.requests[self.request_idx]}")
             self.request_idx += 1  # prepare to broadcast the next request
 
     def remove_request(self, chunk_hash):
         self.requests.remove(chunk_hash)
+
+    def append_request(self, chunk_hash):
+        # ensure that no existing requests are appended
+        if chunk_hash in self.requests:
+            return
+        self.requests.append(chunk_hash)
+        # clear any previously received data
+        if chunk_hash in self.received:
+            self.received[chunk_hash] = b''
+        # broad cast this new request
+        for _, peer in PEERS.items():
+            peer.send(WHOHAS, data=bytes.fromhex(chunk_hash))
+        # verbose debug
+        if 0 < CONFIG.verbose: lprint(f"Broadcasting for chunk {chunk_hash}")
 
     def completed(self):
         return self.remaining == 0
@@ -255,7 +311,7 @@ def process_inbound_udp(sock: simsocket.SimSocket):
         # get the sender's chunk's hash
         chunk_hash = bytes.hex(data[:HASH_SIZE])
         # verbose debug
-        if 0 < CONFIG.verbose: lprint(f"Received IHAVE with [{chunk_hash}]\n"
+        if 0 < CONFIG.verbose: lprint(f"Received IHAVE with [{chunk_hash}] from {peer}\n"
                                       f"\tneeds: {list(DOWNLOAD.requests)}")
         if chunk_hash in DOWNLOAD.requests:
             if 0 < CONFIG.verbose: lprint(f"Agreed to establish connection with {peer}")
@@ -270,10 +326,12 @@ def process_inbound_udp(sock: simsocket.SimSocket):
     # got DATA
     elif type_code == DATA:
         peer.receive_data(data, seq)
-        DOWNLOAD.append_data(peer.receive_hash, data)
+        DOWNLOAD.append_data(peer, data)
     # got ACK
     elif type_code == ACK:
         peer.receive_ack(ack)
+    # refresh connection if its a receiver or sender peer
+    peer.connection_refresh()
 
 
 def peer_run(config):
@@ -291,12 +349,15 @@ def peer_run(config):
     CONFIG = config
     CONFIG.verbose = 1
 
+    request_timestamp = time.time()
+
     try:
         while True:
             ready = select.select([sock, sys.stdin], [], [], 0.1)
             read_ready = ready[0]
             if len(read_ready) > 0:  # a packet or input have been received
                 if sock in read_ready:
+                    request_timestamp = time.time()
                     process_inbound_udp(sock)
                 if sys.stdin in read_ready:
                     # process user input
@@ -305,8 +366,14 @@ def peer_run(config):
                         DOWNLOAD = Download(chunk_file, output_file)
             for _, peer in PEERS.items():
                 if not peer.free: peer.send_data()  # send data for connected peers
+                if peer.connection_timeout(): peer.connection_reset()
                 peer.expect_ack()
-            if DOWNLOAD: DOWNLOAD.broadcast_request()  # ask for a chunk
+            if DOWNLOAD:
+                if request_timestamp + REQUEST_TIMEOUT < time.time():
+                    DOWNLOAD.reset_broadcast()
+                    # verbose debug
+                    if 0 < CONFIG.verbose: lprint(f"Broadcasting {DOWNLOAD.requests} due to request timeout")
+                DOWNLOAD.broadcast_request()  # ask for a chunk
             # pass
     except KeyboardInterrupt:
         pass

@@ -55,10 +55,10 @@ def crash_session():
         if os.path.exists("test/tmp4/download_result.fragment"):
             success = True
             break
-        elif time.time()-stime>time_max:
-            # Reached max transmission time, abort
-            success = False
-            break 
+        # elif time.time()-stime>time_max:
+        #     # Reached max transmission time, abort
+        #     success = False
+        #     break
 
         time.sleep(0.5)
         

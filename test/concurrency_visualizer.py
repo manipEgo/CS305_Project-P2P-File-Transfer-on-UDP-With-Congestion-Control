@@ -19,14 +19,14 @@ def analyze(file):
 
     with open(file, "r") as f:
         first_line = f.readline()
-        start_info = first_line.split("-+-")
+        start_info = first_line.split(" - ")
         start_time = str2time(start_info[0].strip())*1000
 
         while True:
             line = f.readline()
             if not line:
                 break
-            info = line.split("-+-")
+            info = line.split(" - ")
             if info[2].strip() != "DEBUG" or "sending" in line:
                 continue
             

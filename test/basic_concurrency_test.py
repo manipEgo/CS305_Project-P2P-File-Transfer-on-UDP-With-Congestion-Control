@@ -54,10 +54,10 @@ def concurrent_session():
         if os.path.exists("test/tmp3/download_result.fragment"):
             success = True
             break
-        elif time.time()-stime>time_max:
-            # Reached max transmission time, abort
-            success = False
-            break 
+        # elif time.time()-stime>time_max:
+        #     # Reached max transmission time, abort
+        #     success = False
+        #     break
 
         time.sleep(0.5)
         
