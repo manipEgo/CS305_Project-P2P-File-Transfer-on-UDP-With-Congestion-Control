@@ -82,12 +82,17 @@ class Peer:
             self.send_time_dict[seq] = time.time()
 
     def send_data(self):
+        cnt = 0
         while len(self.send_seq_list) > 0:
-            seq = self.send_seq_list.pop()
-            left = (seq - 1) * MAX_PAYLOAD
-            right = min(seq * MAX_PAYLOAD, CHUNK_SIZE)
-            self.send(DATA, seq=seq,
-                      data=CONFIG.haschunks[self.send_chunk][left:right])
+            if len(self.send_time_dict) == 0:
+                cnt = 0
+            while cnt <= self.cwnd:
+                seq = self.send_seq_list.pop()
+                left = (seq - 1) * MAX_PAYLOAD
+                right = min(seq * MAX_PAYLOAD, CHUNK_SIZE)
+                self.send(DATA, seq=seq,
+                          data=CONFIG.haschunks[self.send_chunk][left:right])
+                cnt += 1
         # TODO: Congestion Control
 
     def receive_data(self, data: bytes, seq):
