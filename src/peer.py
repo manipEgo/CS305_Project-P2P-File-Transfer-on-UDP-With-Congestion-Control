@@ -135,7 +135,7 @@ class Peer:
         else:
             self.ack_cnt_dict[ack] = 1
             if self.cwnd >= self.ssthresh:  # Congestion Avoidance state
-                self.cwnd = math.floor((self.cwnd + 1) / self.cwnd)
+                self.cwnd = math.floor(self.cwnd + 1 / self.cwnd)
             else:  # Slow Start state
                 self.cwnd += 1
 
