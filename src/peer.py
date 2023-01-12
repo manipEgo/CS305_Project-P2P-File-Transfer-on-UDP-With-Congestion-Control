@@ -246,7 +246,7 @@ class Buffer:
 
     def insert(self, data: bytes, seq: int):
         if seq in self.seqs: return  # duplicate data
-        if 0 < CONFIG.verbose: lprint(f"Inserted DATA[seq={seq:3d}] into buffer")
+        if 0 < CONFIG.verbose: lprint(f"Inserted DATA[seq={seq:3d}] into buffer, total seqs {len(self.seqs)+1}")
         self.seqs.append(seq)
         if len(self.data) < seq: self.data.extend(" " * (seq - len(self.data)))
         self.data[seq - 1] = data
