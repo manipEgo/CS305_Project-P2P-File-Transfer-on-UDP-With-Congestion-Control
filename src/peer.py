@@ -132,8 +132,8 @@ class Peer:
             self.send_time_dict = {}
 
             self.ack_cnt_dict = {}
-            self.cwnd.pop(CONFIG.identity, None)  # uncheck part!!
-            self.ssthresh.pop(CONFIG.identity, None)
+            self.cwnd = {}  # uncheck part!!
+            self.ssthresh = {}
             # verbose debug
             if 0 < CONFIG.verbose: lprint(f"No need to send to disconnected {self}")
 
