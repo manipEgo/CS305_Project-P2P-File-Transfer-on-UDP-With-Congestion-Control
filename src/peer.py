@@ -222,7 +222,7 @@ class Download:
         self.output_file = output_file
         self.request_idx = 0
 
-    def append_data(self, peer: Peer, data: bytes):
+    def append_data(self, peer: Peer, data: bytes, seq: int):
         """
         Appends a single packet's data to its corresponding chunk.
 
@@ -232,7 +232,9 @@ class Download:
         :param data: the data in the packet
         """
         if peer.receive_hash in self.received:
-            self.received[peer.receive_hash] += data
+            temp = self.received[peer.receive_hash]
+            left = (seq - 1) * MAX_PAYLOAD
+            self.received[peer.receive_hash] = temp[:left] + data + temp[left:]
         else:
             self.received[peer.receive_hash] = data
         if len(self.received[peer.receive_hash]) == CHUNK_SIZE:
@@ -345,7 +347,7 @@ def process_inbound_udp(sock: simsocket.SimSocket):
     # got DATA
     elif type_code == DATA:
         peer.receive_data(data, seq)
-        DOWNLOAD.append_data(peer, data)
+        DOWNLOAD.append_data(peer, data, seq)
     # got ACK
     elif type_code == ACK:
         peer.receive_ack(ack)
