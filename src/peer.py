@@ -133,7 +133,9 @@ class Peer:
 
     def close_receive(self, success=False):
         # verbose debug
-        if 0 < CONFIG.verbose: lprint(f"Stop receiving {self.receive_hash} from {self}")
+        if 0 < CONFIG.verbose:
+            result = "Success" if success else "Stopped"
+            lprint(f"{result} receiving {self.receive_hash} from {self}")
         if not success:
             DOWNLOAD.append_request(self.receive_hash)  # not successful, try again
         self.connection_timestamp = 0
@@ -170,7 +172,7 @@ class Peer:
 
     def send_data(self):
         cnt = 0
-        # if 0 < CONFIG.verbose: lprint(f"Currently: window size [{self.cwnd:2d}] list size [{len(self.send_seq_list):2d}]")
+        if 0 < CONFIG.verbose: lprint(f"Currently: window size [{self.cwnd:2d}] list size [{len(self.send_seq_list):2d}]")
         while len(self.send_seq_list) > 0 and cnt <= math.floor(self.cwnd):
             seq = self.send_seq_list.pop()
             left = (seq - 1) * MAX_PAYLOAD
@@ -178,12 +180,13 @@ class Peer:
             self.send(DATA,
                       seq=seq,
                       data=self.send_chunk[left:right])
-            if 0 < CONFIG.verbose: lprint(f"Sent DATA[{left:6d}:{right:6d}] to {self}")
+            # if 0 < CONFIG.verbose: lprint(f"Sent DATA[{left:6d}:{right:6d}] to {self}")
+            if 0 < CONFIG.verbose: lprint(f"Sent DATA[seq={seq:3d}] to {self}")
             cnt += 1
 
     def receive_data(self, data: bytes, seq):
-        if 0 < CONFIG.verbose: lprint(f"Received DATA[seq={seq:3d}] from {self}")
         self.send(ACK, ack=seq)
+        if 0 < CONFIG.verbose: lprint(f"Received DATA[seq={seq:3d}] from {self}")
         self.buffer.insert(data, seq)
         # the buffer is complete
         if self.buffer.complete():
@@ -191,7 +194,6 @@ class Peer:
             self.close_receive(success=True)
 
     def receive_ack(self, ack):
-        # if 0 < CONFIG.verbose: lprint(f"Received ACK[ack={ack:3d}] from {self}")
         # estimate RTT
         sample_RTT = time.time() - self.send_time_dict[ack]
         self.estimated_RTT = (1 - self.alpha) * self.estimated_RTT + self.alpha * sample_RTT
@@ -240,17 +242,17 @@ class Peer:
 
 class Buffer:
     def __init__(self):
-        self.data = dict()
+        self.data: List[bytes] = []
+        self.seqs = []
 
     def insert(self, data: bytes, seq: int):
-        if seq in self.data.keys(): return  # duplicate data
-        self.data[seq] = data
+        if seq in self.seqs: return  # duplicate data
+        self.seqs.append(seq)
+        if len(self.data) < seq: self.data.extend(" " * (seq - len(self.data)))
+        self.data[seq - 1] = data
 
     def dump(self):
-        data = b''
-        for i in range(len(self.data)):
-            data += self.data[i + 1]
-        return data
+        return b''.join(self.data)
 
     def complete(self):
         return len(self.data) == CHUNK_SPAN
@@ -284,13 +286,14 @@ class Download:
         self.received[chunk_hash] = buffer.dump()
         self.remaining -= 1
         CONFIG.haschunks[chunk_hash] = self.received[chunk_hash]
+
         if self.remaining == 0: self.dump()  # dump when completed
 
         # verbose debug
         if 0 < CONFIG.verbose:
             sha1 = hashlib.sha1()
             sha1.update(self.received[chunk_hash])
-            lprint(f"Completed a chunk containing {len(buffer.data)} packets\n"
+            lprint(f"Completed a chunk with {len(buffer.data)} packets\n"
                    f"\texpected hash : {chunk_hash}\n"
                    f"\tgot hash      : {sha1.hexdigest()}")
 
@@ -330,9 +333,12 @@ class Download:
         """
         Dumps the received chunks to a file in dictionary format and prints "GOT".
         """
+        # verbose debug
+        if 0 < CONFIG.verbose: lprint(f"Dumping received chunks")
         with open(self.output_file, "wb") as file:
             pickle.dump(self.received, file)
         print(f"GOT {self.output_file}")
+        if 0 < CONFIG.verbose: lprint(f"Dumping completed")
 
 
 # global variables
@@ -450,6 +456,7 @@ def peer_run(config):
             if DOWNLOAD:
                 if request_timestamp + REQUEST_TIMEOUT < time.time():
                     DOWNLOAD.reset_broadcast()
+                    request_timestamp = time.time()
                     # verbose debug
                     if 0 < CONFIG.verbose: lprint(f"Broadcasting {DOWNLOAD.requests} due to request timeout")
                 DOWNLOAD.broadcast_request()  # ask for a chunk
