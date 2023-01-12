@@ -124,7 +124,7 @@ class Peer:
         self.send_time_dict.clear()
 
         self.ack_cnt_dict.clear()
-        self.cwnd = 1  # uncheck part!!
+        self.cwnd = 1
         self.ssthresh = 64
 
     def init_receive(self, chunk_hash):
@@ -180,7 +180,6 @@ class Peer:
             self.send(DATA,
                       seq=seq,
                       data=self.send_chunk[left:right])
-            # if 0 < CONFIG.verbose: lprint(f"Sent DATA[{left:6d}:{right:6d}] to {self}")
             if 0 < CONFIG.verbose: lprint(f"Sent DATA[seq={seq:3d}] to {self}")
             cnt += 1
 
@@ -194,6 +193,7 @@ class Peer:
             self.close_receive(success=True)
 
     def receive_ack(self, ack):
+        if 0 < CONFIG.verbose: lprint(f"Received ACK[ack={ack:3d}] from {self}")
         # estimate RTT
         sample_RTT = time.time() - self.send_time_dict[ack]
         self.estimated_RTT = (1 - self.alpha) * self.estimated_RTT + self.alpha * sample_RTT
@@ -222,8 +222,7 @@ class Peer:
 
         # finish or continue sending
         if CHUNK_SPAN <= ack:
-            # TODO: possible conflict between two files
-            self.free = True  # chunk transfer completed
+            self.close_send()
             # verbose debug
             if 0 < CONFIG.verbose: lprint(f"Sent 1 chunk with ack: {ack}")
         else:
@@ -247,6 +246,7 @@ class Buffer:
 
     def insert(self, data: bytes, seq: int):
         if seq in self.seqs: return  # duplicate data
+        if 0 < CONFIG.verbose: lprint(f"Inserted DATA[seq={seq:3d}] into buffer")
         self.seqs.append(seq)
         if len(self.data) < seq: self.data.extend(" " * (seq - len(self.data)))
         self.data[seq - 1] = data
