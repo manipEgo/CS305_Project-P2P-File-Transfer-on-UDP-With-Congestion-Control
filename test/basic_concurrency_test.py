@@ -42,7 +42,7 @@ def concurrent_session():
         os.remove("test/tmp3/download_result.fragment")
 
     stime = time.time()
-    concurrent_session = grader.GradingSession(grader.normal_handler, latency=0.01, spiffy=False)
+    concurrent_session = grader.GradingSession(grader.normal_handler, latency=0.01, spiffy=True)
     concurrent_session.add_peer(1, "src/peer.py", "test/tmp3/nodes3.map", "test/tmp3/data3-1.fragment", 100, ("127.0.0.1", 48001))
     concurrent_session.add_peer(2, "src/peer.py", "test/tmp3/nodes3.map", "test/tmp3/data3-2.fragment", 100, ("127.0.0.1", 48002))
     concurrent_session.add_peer(3, "src/peer.py", "test/tmp3/nodes3.map", "test/tmp3/data3-3.fragment", 100, ("127.0.0.1", 48003))
@@ -54,10 +54,10 @@ def concurrent_session():
         if os.path.exists("test/tmp3/download_result.fragment"):
             success = True
             break
-        # elif time.time()-stime>time_max:
-        #     # Reached max transmission time, abort
-        #     success = False
-        #     break
+        elif time.time()-stime>time_max:
+            # Reached max transmission time, abort
+            success = False
+            break
 
         time.sleep(0.5)
         

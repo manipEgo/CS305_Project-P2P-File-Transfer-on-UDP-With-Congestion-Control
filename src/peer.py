@@ -24,7 +24,9 @@ MAGIC_VAL = 52305
 MAX_PAYLOAD = 1024
 TEAM_CODE = 28
 CONNECTION_TIMEOUT = 40
+CONNECTION_DELAY = 5
 REQUEST_TIMEOUT = 60
+ACK_DELAY = 0.1
 
 # packet types
 WHOHAS = 0
@@ -45,24 +47,24 @@ time_base = 0
 
 
 def lprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
-    print(*args, **kwargs)
+    # print(*args, file=sys.stderr, **kwargs)
+    # print(*args, **kwargs)
     global init, time_base
     if init:
         init = False
         time_base = time.time()
         with open(f"./log/comp-{CONFIG.identity}.log", 'w+') as f:
             with redirect_stdout(f):
-                print(f"time: {get_time()}\t", *args, **kwargs)
+                print(f"time: {get_time()}  ", *args, **kwargs)
     else:
         with open(f"./log/comp-{CONFIG.identity}.log", 'a') as f:
             with redirect_stdout(f):
-                print(f"time: {get_time()}\t", *args, **kwargs)
+                print(f"time: {get_time()}  ", *args, **kwargs)
     pass
 
 
 def get_time():
-    return f"{time.time() - time_base:10.9f}s"
+    return f"{time.time() - time_base:10f}s"
 
 
 class Peer:
@@ -83,12 +85,23 @@ class Peer:
         self.dev_RTT = 0.0
         self.alpha = 0.125
         self.beta = 0.25
-        self.send_time_dict = {}
+        self.send_time_dict = dict()
 
         # duplicate ACKs && congestion control variables
-        self.ack_cnt_dict = {}
+        self.ack_cnt_dict = dict()
         self.cwnd = 1
         self.ssthresh = 64
+
+        # sender
+        self.send_base = 0
+        self.next_seq = 0
+        self.timer = 0
+        self.timed_ack = 0
+        # receiver
+        self.next_ack = 1
+        self.prev_ack_at = 0
+        self.delay_ack = False
+        self.receive_bound = 0
 
     def __str__(self):
         s = f"peer[{self.idx:2d}] at {self.hostname}:{self.port}"
@@ -127,6 +140,11 @@ class Peer:
         self.cwnd = 1
         self.ssthresh = 64
 
+        self.send_base = 0
+        self.next_seq = 0
+        self.timer = 0
+        self.timed_ack = 0
+
     def init_receive(self, chunk_hash):
         DOWNLOAD.remove_request(chunk_hash)
         self.receive_hash = chunk_hash  # hash for the chunk to be received
@@ -142,13 +160,20 @@ class Peer:
         self.receive_hash = ""
         self.buffer.empty()
 
+        self.next_ack = 1
+        self.prev_ack_at = 0
+        self.delay_ack = False
+        self.receive_bound = 0
+
     def refresh_all(self):
         if self.receive_hash or not self.free:
             self.connection_timestamp = time.time()
 
     def timeout_all(self):
-        return (self.receive_hash or not self.free) \
-               and self.connection_timestamp + CONNECTION_TIMEOUT < time.time()
+        return (self.receive_hash or not self.free) and \
+               self.connection_timestamp \
+               + (self.timeout_interval * CONNECTION_DELAY if self.timeout_interval else CONNECTION_TIMEOUT) \
+               < time.time()
 
     def close_all(self):
         if self.receive_hash:
@@ -156,7 +181,8 @@ class Peer:
         elif not self.free:
             self.close_send()
 
-    def send(self, type_code: int, seq: int = 0, ack: int = 0, data: bytes = None):
+    def send_packet(self, type_code: int, seq: int = 0, ack: int = 0, data: bytes = None):
+        if type_code == DATA and seq: data = self.send_chunk[(seq - 1) * MAX_PAYLOAD:seq * MAX_PAYLOAD]
         header = struct.pack("!HBBHHII",
                              MAGIC_VAL,
                              TEAM_CODE,
@@ -167,56 +193,98 @@ class Peer:
                              ack)
         content = header + (data if data else b'')
         self.sock.sendto(content, (self.hostname, self.port))
-        if type_code == DATA:
-            self.send_time_dict[seq] = time.time()
+        if type_code == DATA and not self.timer:
+            self.timer = time.time()
+
+        if 0 < CONFIG.verbose:
+            if type_code == ACK: lprint(f"Sent*    ACK [ack={ack:3d}] to {self}")
+            if type_code == DATA: lprint(f"Sent*    DATA[seq={seq:3d}] to {self}")
 
     def send_data(self):
-        cnt = 0
-        if 0 < CONFIG.verbose: lprint(f"Currently: window size [{self.cwnd:2d}] list size [{len(self.send_seq_list):2d}]")
-        while len(self.send_seq_list) > 0 and cnt <= math.floor(self.cwnd):
-            seq = self.send_seq_list.pop()
-            left = (seq - 1) * MAX_PAYLOAD
-            right = min(seq * MAX_PAYLOAD, CHUNK_SIZE)
-            self.send(DATA,
-                      seq=seq,
-                      data=self.send_chunk[left:right])
-            if 0 < CONFIG.verbose: lprint(f"Sent DATA[seq={seq:3d}] to {self}")
-            cnt += 1
+        if self.free: return
+        # send all packets in the window and advance the send pointer
+        if self.next_seq < self.send_base + self.cwnd and self.next_seq <= CHUNK_SPAN:
+            self.next_seq += 1
+            self.send_packet(DATA, self.next_seq)
+
+            if not self.timer:
+                self.timer = time.time()
+                self.timed_ack = self.next_seq
+
+            if 0 < CONFIG.verbose:
+                lprint(f"Sent     DATA[seq={self.next_seq:3d}][base={self.send_base:3d}][next={self.next_seq:3d}] to   {self}")
 
     def receive_data(self, data: bytes, seq):
-        self.send(ACK, ack=seq)
-        if 0 < CONFIG.verbose: lprint(f"Received DATA[seq={seq:3d}] from {self}")
+        if not self.receive_hash: return
+        # try to insert the data into the buffer
         self.buffer.insert(data, seq)
         # the buffer is complete
-        if self.buffer.complete():
+        if self.buffer.size() == CHUNK_SPAN:
+            self.send_packet(ACK, ack=CHUNK_SPAN)
             DOWNLOAD.append_buffer(self.buffer, self.receive_hash)
             self.close_receive(success=True)
+            return
+
+        # note the largest seq received (used to account for gaps)
+        if self.receive_bound < seq: self.receive_bound = seq
+
+        if self.next_ack == seq:
+            self.next_ack += 1  # advance the receive pointer
+            self.send_packet(ACK, ack=seq)
+
+            # if self.delay_ack: self.send_packet(ACK, ack=seq)  # previously delayed
+            # else: self.prev_ack_at = time.time()
+            #
+            # self.delay_ack = not self.delay_ack  # every other normal ACK
+        else:
+            if self.buffer.size() == self.receive_bound:  # filled the gap
+                self.next_ack = self.receive_bound + 1  # advance to the bound
+                self.send_packet(ACK, ack=self.receive_bound)
+            else:
+                self.send_packet(ACK, ack=self.next_ack)  # hope to trigger retransmit
+
+        if 0 < CONFIG.verbose:
+            lprint(f"Received DATA[seq={seq:3d}][bound={self.receive_bound:3d}][next={self.next_ack:3d}] from {self}")
+
+    def send_ack(self):
+        if self.prev_ack_at + ACK_DELAY < time.time():
+            self.send_packet(ACK, ack=self.next_ack)
+            self.delay_ack = False
 
     def receive_ack(self, ack):
-        if 0 < CONFIG.verbose: lprint(f"Received ACK[ack={ack:3d}] from {self}")
         # estimate RTT
-        sample_RTT = time.time() - self.send_time_dict[ack]
-        self.estimated_RTT = (1 - self.alpha) * self.estimated_RTT + self.alpha * sample_RTT
-        self.dev_RTT = (1 - self.beta) * self.dev_RTT + self.beta * abs(sample_RTT - self.estimated_RTT)
-        self.timeout_interval = self.estimated_RTT + 4 * self.dev_RTT
+        if ack == self.timed_ack:
+            sample_RTT = time.time() - self.timer
+            self.estimated_RTT = (1 - self.alpha) * self.estimated_RTT + self.alpha * sample_RTT
+            self.dev_RTT = (1 - self.beta) * self.dev_RTT + self.beta * abs(sample_RTT - self.estimated_RTT)
+            self.timeout_interval = self.estimated_RTT + 4 * self.dev_RTT
 
-        # stop expecting this ACK
-        self.send_time_dict.pop(ack, None)
+        # advance send base for cumulative ACK
+        if self.send_base < ack:
+            self.send_base = min(ack, CHUNK_SPAN - self.cwnd)
+            if self.send_base < self.next_seq:
+                self.timed_ack = ack
+                self.timer = time.time()  # there are still unACKed packets
+            else:
+                self.timed_ack = 0
+                self.timer = 0  # all packets are ACKed
+
+        if 0 < CONFIG.verbose:
+            lprint(f"Received ACK [ack={ack:3d}][base={self.send_base:3d}][next={self.next_seq:3d}] from {self}")
 
         # count duplicate ACKs
         if ack in self.ack_cnt_dict.keys():
             self.ack_cnt_dict[ack] += 1
             if self.ack_cnt_dict[ack] == 3:
                 self.ack_cnt_dict[ack] = 0
-                self.reset()
+                self.send_packet(DATA, seq=ack)
+                self.reset_window()
             else:
                 return
         else:
             self.ack_cnt_dict[ack] = 1
-            self.cwnd = 1
-            self.ssthresh = 64
             if self.cwnd >= self.ssthresh:  # Congestion Avoidance state
-                self.cwnd = self.cwnd + 1 / self.cwnd
+                self.cwnd = math.floor(self.cwnd + 1 / self.cwnd)
             else:  # Slow Start state
                 self.cwnd += 1
 
@@ -225,40 +293,40 @@ class Peer:
             self.close_send()
             # verbose debug
             if 0 < CONFIG.verbose: lprint(f"Sent 1 chunk with ack: {ack}")
-        else:
-            self.send_seq_list.append(ack + 1)
 
     def expect_ack(self):
-        for seq, send_time in self.send_time_dict.items():
-            if send_time + self.timeout_interval <= time.time():
-                self.send_seq_list.append(seq)
-                self.reset()
+        if self.timer and self.timer + self.timeout_interval < time.time():
+            # verbose debug
+            if 0 < CONFIG.verbose: lprint(f"Timer timeout for {self}")
+            self.reset_window()
+            self.send_packet(DATA, seq=self.send_base + 1)
+            self.timer = time.time()
 
-    def reset(self):
+    def reset_window(self):
         self.ssthresh = max(math.floor(self.cwnd / 2), 2)
         self.cwnd = 1
 
 
 class Buffer:
     def __init__(self):
-        self.data: List[bytes] = []
+        self.data: List[bytes] = [b'' for _ in range(CHUNK_SPAN)]
         self.seqs = []
 
     def insert(self, data: bytes, seq: int):
         if seq in self.seqs: return  # duplicate data
         if 0 < CONFIG.verbose: lprint(f"Inserted DATA[seq={seq:3d}] into buffer, total seqs {len(self.seqs)+1}")
         self.seqs.append(seq)
-        if len(self.data) < seq: self.data.extend(" " * (seq - len(self.data)))
         self.data[seq - 1] = data
+
+    def size(self):
+        return len(self.seqs)
 
     def dump(self):
         return b''.join(self.data)
 
-    def complete(self):
-        return len(self.data) == CHUNK_SPAN
-
     def empty(self):
-        self.data.clear()
+        self.data = [b'' for _ in range(CHUNK_SPAN)]
+        self.seqs.clear()
 
 
 class Download:
@@ -306,7 +374,7 @@ class Download:
         """
         if self.request_idx < len(self.requests):  # ensure that the index is in bound
             for _, peer in PEERS.items():
-                peer.send(WHOHAS, data=bytes.fromhex(self.requests[self.request_idx]))
+                peer.send_packet(WHOHAS, data=bytes.fromhex(self.requests[self.request_idx]))
             # verbose debug
             if 0 < CONFIG.verbose: lprint(f"Routine broadcasting for {self.requests[self.request_idx]}")
             self.request_idx += 1  # prepare to broadcast the next request
@@ -322,7 +390,7 @@ class Download:
         self.requests.append(chunk_hash)
         # broad cast this new request
         for _, peer in PEERS.items():
-            peer.send(WHOHAS, data=bytes.fromhex(chunk_hash))
+            peer.send_packet(WHOHAS, data=bytes.fromhex(chunk_hash))
         # verbose debug
         if 0 < CONFIG.verbose: lprint(f"Broadcasting for chunk {chunk_hash}")
 
@@ -359,6 +427,7 @@ def process_inbound_udp(sock: simsocket.SimSocket):
     data = packet[HEADER_LEN:]
     # get peer
     peer: Peer = PEERS[from_addr]
+    # if 0 < CONFIG.verbose: lprint(f"Received {CODE[type_code]}")
     # check magic value
     if magic != MAGIC_VAL:
         lprint(f"Magic value [{magic}] incorrect: endianness incorrect or packet is spoofed")
@@ -371,10 +440,10 @@ def process_inbound_udp(sock: simsocket.SimSocket):
                                       f"\thas: {list(CONFIG.haschunks.keys())}")
         if receiver_cnt == CONFIG.max_conn:
             if 0 < CONFIG.verbose: lprint(f"Connection denied due to connection limit reached")
-            peer.send(DENIED)  # denied
+            peer.send_packet(DENIED)  # denied
         elif chunk_hash in CONFIG.haschunks and peer.free:  # chunk needed and peer free
             if 0 < CONFIG.verbose: lprint(f"Trying to establish connection with {peer}")
-            peer.send(IHAVE, data=data[:HASH_SIZE])  # send back the hash requested
+            peer.send_packet(IHAVE, data=data[:HASH_SIZE])  # send back the hash requested
             peer.send_chunk = CONFIG.haschunks[chunk_hash]  # prepare chunk to be sent
     # got IHAVE
     elif type_code == IHAVE:
@@ -386,7 +455,7 @@ def process_inbound_udp(sock: simsocket.SimSocket):
         if chunk_hash in DOWNLOAD.requests:
             if 0 < CONFIG.verbose: lprint(f"Agreed to establish connection with {peer}")
             peer.init_receive(chunk_hash)
-            peer.send(GET)
+            peer.send_packet(GET)
     # got GET
     elif type_code == GET:
         if 0 < CONFIG.verbose: lprint(f"Connection establish with {peer}")
@@ -414,7 +483,7 @@ def peer_run(config):
             PEERS[(hostname, port)] = peer
 
     CONFIG = config
-    CONFIG.verbose = 1
+    # CONFIG.verbose = 1
 
     request_timestamp = time.time()
 
@@ -445,7 +514,8 @@ def peer_run(config):
 
             for _, peer in PEERS.items():
                 # if 0 < CONFIG.verbose: lprint(f"Going through {peer}")
-                if not peer.free: peer.send_data()  # send data for connected peers
+                if not peer.free: peer.send_data()  # send DATA for connected peers
+                # if peer.delay_ack: peer.send_ack()  # send delayed normal ACKs
                 if peer.timeout_all(): peer.close_all()
                 peer.expect_ack()
 
@@ -458,7 +528,7 @@ def peer_run(config):
                     DOWNLOAD.reset_broadcast()
                     request_timestamp = time.time()
                     # verbose debug
-                    if 0 < CONFIG.verbose: lprint(f"Broadcasting {DOWNLOAD.requests} due to request timeout")
+                    if 0 < CONFIG.verbose: lprint(f"Broadcast reset due to request timeout")
                 DOWNLOAD.broadcast_request()  # ask for a chunk
 
             # lprint(f"Exit loop  : {time.time() - start}")
