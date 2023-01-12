@@ -22,8 +22,8 @@ HEADER_LEN = struct.calcsize("!HBBHHII")
 MAGIC_VAL = 52305
 MAX_PAYLOAD = 1024
 TEAM_CODE = 28
-CONNECTION_TIMEOUT = 20
-REQUEST_TIMEOUT = 40
+CONNECTION_TIMEOUT = 40
+REQUEST_TIMEOUT = 60
 
 # packet types
 WHOHAS = 0
@@ -33,22 +33,32 @@ DATA = 3
 ACK = 4
 DENIED = 5
 
+# global variables
+connection_cnt = 0
+
+# verbose functions
 from contextlib import redirect_stdout
 init = True
+time_base = 0
 def lprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
     print(*args, **kwargs)
-    global init
+    global init, time_base
     if init:
         init = False
-        with open(f"./log/peer-{CONFIG.identity}.log", 'w+') as f:
+        time_base = time.time()
+        with open(f"./log/comp-{CONFIG.identity}.log", 'w+') as f:
             with redirect_stdout(f):
-                print(*args, **kwargs)
+                print(f"time: {get_time()}\t", *args, **kwargs)
     else:
-        with open(f"./log/peer-{CONFIG.identity}.log", 'a') as f:
+        with open(f"./log/comp-{CONFIG.identity}.log", 'a') as f:
             with redirect_stdout(f):
-                print(*args, **kwargs)
+                print(f"time: {get_time()}\t", *args, **kwargs)
     pass
+
+
+def get_time():
+    return f"{time.time() - time_base:10.9f}s"
 
 
 class Peer:
@@ -87,6 +97,12 @@ class Peer:
     def sock(self, sock: simsocket.SimSocket):
         Peer.__sock = sock
 
+    def connection_init(self):
+        global connection_cnt
+        self.free = False  # start sending send_chunk
+        connection_cnt += 1
+        self.send_seq_list.append(1)
+
     def connection_refresh(self):
         if self.receive_hash or not self.free:
             self.connection_timestamp = time.time()
@@ -95,7 +111,8 @@ class Peer:
         return (self.receive_hash or not self.free) \
                and self.connection_timestamp + CONNECTION_TIMEOUT < time.time()
 
-    def connection_reset(self):
+    def connection_close(self):
+        global connection_cnt
         self.connection_timestamp = 0
 
         if self.receive_hash:
@@ -104,6 +121,7 @@ class Peer:
             DOWNLOAD.append_request(self.receive_hash)
             self.receive_hash = ""
         elif not self.free:
+            connection_cnt -= 1
             self.free = True
 
             self.timeout_interval = 114.0
@@ -150,6 +168,7 @@ class Peer:
         self.send(ACK, ack=seq)
 
     def receive_ack(self, ack):
+        if 0 < CONFIG.verbose: lprint(f"Received ack[ack={ack}] from {self}")
         # estimate RTT
         sample_RTT = time.time() - self.send_time_dict[ack]
         self.estimated_RTT = (1 - self.alpha) * self.estimated_RTT + self.alpha * sample_RTT
@@ -246,6 +265,7 @@ class Download:
 
     def remove_request(self, chunk_hash):
         self.requests.remove(chunk_hash)
+        if self.request_idx: self.request_idx -= 1
 
     def append_request(self, chunk_hash):
         # ensure that no existing requests are appended
@@ -275,7 +295,6 @@ class Download:
 
 # global variables
 PEERS = dict()
-CONNECTION_CNT = 0
 DOWNLOAD: Download = None
 CONFIG: bt_utils.BtConfig = None
 
@@ -284,6 +303,7 @@ def process_inbound_udp(sock: simsocket.SimSocket):
     """
     Processes the UDP packet received.
     """
+    global connection_cnt
     packet, from_addr = sock.recvfrom(BUF_SIZE)
     magic, team, type_code, header_len, packet_len, seq, ack = struct.unpack("!HBBHHII", packet[:HEADER_LEN])
     data = packet[HEADER_LEN:]
@@ -297,9 +317,9 @@ def process_inbound_udp(sock: simsocket.SimSocket):
         # get the request chunk's hash
         chunk_hash = bytes.hex(data[:HASH_SIZE])
         # verbose debug
-        if 0 < CONFIG.verbose: lprint(f"Received WHOHAS requesting for [{chunk_hash}]\n"
+        if 0 < CONFIG.verbose: lprint(f"Received WHOHAS requesting for [{chunk_hash}] from {peer}\n"
                                       f"\thas: {list(CONFIG.haschunks.keys())}")
-        if CONNECTION_CNT == CONFIG.max_conn:
+        if connection_cnt == CONFIG.max_conn:
             if 0 < CONFIG.verbose: lprint(f"Connection denied due to connection limit reached")
             peer.send(DENIED)  # denied
         elif chunk_hash in CONFIG.haschunks and peer.free:  # chunk needed and peer free
@@ -321,8 +341,7 @@ def process_inbound_udp(sock: simsocket.SimSocket):
     # got GET
     elif type_code == GET:
         if 0 < CONFIG.verbose: lprint(f"Connection establish with {peer}")
-        peer.free = False  # start sending send_chunk
-        peer.send_seq_list.append(1)
+        peer.connection_init()
     # got DATA
     elif type_code == DATA:
         peer.receive_data(data, seq)
@@ -353,9 +372,16 @@ def peer_run(config):
 
     try:
         while True:
+            # start = time.time()
+
             ready = select.select([sock, sys.stdin], [], [], 0.1)
             read_ready = ready[0]
             if len(read_ready) > 0:  # a packet or input have been received
+
+                # now = time.time()
+                # lprint(f"Enter ready: {now - start}")
+                # start = now
+
                 if sock in read_ready:
                     request_timestamp = time.time()
                     process_inbound_udp(sock)
@@ -364,16 +390,29 @@ def peer_run(config):
                     command, chunk_file, output_file = input().split(" ")
                     if command == 'DOWNLOAD':
                         DOWNLOAD = Download(chunk_file, output_file)
+
+            # now = time.time()
+            # lprint(f"Exit ready : {now - start}")
+            # start = now
+
             for _, peer in PEERS.items():
+                # if 0 < CONFIG.verbose: lprint(f"Going through {peer}")
                 if not peer.free: peer.send_data()  # send data for connected peers
-                if peer.connection_timeout(): peer.connection_reset()
+                if peer.connection_timeout(): peer.connection_close()
                 peer.expect_ack()
+
+            # now = time.time()
+            # lprint(f"Exit peers : {now - start}")
+            # start = now
+
             if DOWNLOAD:
                 if request_timestamp + REQUEST_TIMEOUT < time.time():
                     DOWNLOAD.reset_broadcast()
                     # verbose debug
                     if 0 < CONFIG.verbose: lprint(f"Broadcasting {DOWNLOAD.requests} due to request timeout")
                 DOWNLOAD.broadcast_request()  # ask for a chunk
+
+            # lprint(f"Exit loop  : {time.time() - start}")
             # pass
     except KeyboardInterrupt:
         pass
