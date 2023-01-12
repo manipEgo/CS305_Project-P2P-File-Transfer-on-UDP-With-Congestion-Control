@@ -82,8 +82,8 @@ class Peer:
 
         # duplicate ACKs && congestion control variables
         self.ack_cnt_dict = {}
-        self.cwnd = 1
-        self.ssthresh = 64
+        self.cwnd = {}
+        self.ssthresh = {}
 
     def __str__(self):
         s = f"peer[{self.idx}] at {self.hostname}:{self.port}"
@@ -132,8 +132,8 @@ class Peer:
             self.send_time_dict = {}
 
             self.ack_cnt_dict = {}
-            self.cwnd = 1
-            self.ssthresh = 64
+            self.cwnd.pop(CONFIG.identity, None)  # uncheck part!!
+            self.ssthresh.pop(CONFIG.identity, None)
             # verbose debug
             if 0 < CONFIG.verbose: lprint(f"No need to send to disconnected {self}")
 
@@ -153,7 +153,7 @@ class Peer:
 
     def send_data(self):
         cnt = 0
-        while len(self.send_seq_list) > 0 and cnt <= self.cwnd:
+        while len(self.send_seq_list) > 0 and cnt <= math.floor(self.cwnd[CONFIG.identity]):
             seq = self.send_seq_list.pop()
             left = (seq - 1) * MAX_PAYLOAD
             right = min(seq * MAX_PAYLOAD, CHUNK_SIZE)
@@ -183,15 +183,17 @@ class Peer:
             self.ack_cnt_dict[ack] += 1
             if self.ack_cnt_dict[ack] == 3:
                 self.ack_cnt_dict[ack] = 0
-                self.reset()
+                self.reset(CONFIG)
             else:
                 return
         else:
             self.ack_cnt_dict[ack] = 1
-            if self.cwnd >= self.ssthresh:  # Congestion Avoidance state
-                self.cwnd = math.floor(self.cwnd + 1 / self.cwnd)
+            self.cwnd.setdefault(CONFIG.identity, 1)
+            self.ssthresh.setdefault(CONFIG.identity, 64)
+            if self.cwnd[CONFIG.identity] >= self.ssthresh[CONFIG.identity]:  # Congestion Avoidance state
+                self.cwnd[CONFIG.identity] = self.cwnd[CONFIG.identity] + 1 / self.cwnd[CONFIG.identity]
             else:  # Slow Start state
-                self.cwnd += 1
+                self.cwnd[CONFIG.identity] += 1
 
         # finish or continue sending
         if CHUNK_SIZE <= ack * MAX_PAYLOAD:
@@ -206,11 +208,11 @@ class Peer:
         for seq, send_time in self.send_time_dict.items():
             if send_time + self.timeout_interval <= time.time():
                 self.send_seq_list.append(seq)
-                self.reset()
+                self.reset(CONFIG)
 
-    def reset(self):
-        self.ssthresh = max(math.floor(self.cwnd / 2), 2)
-        self.cwnd = 1
+    def reset(self, CONFIG):
+        self.ssthresh[CONFIG.identity] = max(math.floor(self.cwnd[CONFIG.identity] / 2), 2)
+        self.cwnd[CONFIG.identity] = 1
 
 
 class Download:
