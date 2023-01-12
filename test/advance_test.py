@@ -66,13 +66,13 @@ And you can visualize your network using net-visual.py
 @pytest.fixture(scope='module')
 def advance_session():
     success = False
-    time_max = 1000
+    time_max = 640
     if os.path.exists("test/tmp5/results"):
         shutil.rmtree("test/tmp5/results", ignore_errors=True)
         os.mkdir("test/tmp5/results")
 
     stime = time.time()
-    advance_session = grader.GradingSession(grader.normal_handler, latency=0.01, spiffy=False, topo_map="test/tmp5/topo5.map", nodes_map="test/tmp5/nodes5.map")
+    advance_session = grader.GradingSession(grader.normal_handler, latency=0.01, spiffy=True, topo_map="test/tmp5/topo5.map", nodes_map="test/tmp5/nodes5.map")
     advance_session.add_peer(1, "src/peer.py", "test/tmp5/nodes5.map", "test/tmp5/fragments/data5-1.fragment", 100, ("127.0.0.1", 48001), timeout=None)
     advance_session.add_peer(2, "src/peer.py", "test/tmp5/nodes5.map", "test/tmp5/fragments/data5-2.fragment", 100, ("127.0.0.1", 48002), timeout=None)
     advance_session.add_peer(7, "src/peer.py", "test/tmp5/nodes5.map", "test/tmp5/fragments/data5-3.fragment", 100, ("127.0.0.1", 48003), timeout=None)
