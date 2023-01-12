@@ -1,0 +1,14 @@
+window_size_example|window_size_number
+progress_example|timestamp_when_new_data_arrives
+window_size|0
+progress|10.0
+window_size|1
+progress|14.0
+window_size|2
+progress|30.0
+window_size|5
+progress|50.0
+window_size|3
+progress|100.0
+window_size|9
+progress|150.0
