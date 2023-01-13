@@ -203,7 +203,7 @@ class Peer:
     def send_data(self):
         if self.free: return
         # send all packets in the window and advance the send pointer
-        if self.next_seq < self.send_base + self.cwnd and self.next_seq <= CHUNK_SPAN:
+        if self.next_seq < self.send_base + math.floor(self.cwnd) and self.next_seq <= CHUNK_SPAN:
             self.next_seq += 1
             self.send_packet(DATA, self.next_seq)
 
@@ -261,7 +261,7 @@ class Peer:
 
         # advance send base for cumulative ACK
         if self.send_base < ack:
-            self.send_base = min(ack, CHUNK_SPAN - self.cwnd)
+            self.send_base = min(ack, CHUNK_SPAN - math.floor(self.cwnd))
             if self.send_base < self.next_seq:
                 self.timed_ack = ack
                 self.timer = time.time()  # there are still unACKed packets
@@ -284,7 +284,7 @@ class Peer:
         else:
             self.ack_cnt_dict[ack] = 1
             if self.cwnd >= self.ssthresh:  # Congestion Avoidance state
-                self.cwnd = math.floor(self.cwnd + 1 / self.cwnd)
+                self.cwnd = self.cwnd + 1 / self.cwnd
             else:  # Slow Start state
                 self.cwnd += 1
 
