@@ -1,0 +1,2 @@
+time: 0.000176907s	 Received WHOHAS requesting for [3b68110847941b84e8d05417a5b2609122a56314] from peer[ 1] at 127.0.0.1:48001
+	has: ['12e3340d8b1a692c6580c897c0e26bd1ac0eaadf', '45acace8e984465459c893197e593c36daf653db']

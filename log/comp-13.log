@@ -1,0 +1,82 @@
+time:   0.002038s   Routine broadcasting for 8492d9ebfa75967906856426ecaf8f6fee35680d
+time:   0.106507s   Routine broadcasting for ffcbf7387375ae06a87336744f6bf7f9d6e8f905
+time:   0.311542s   Received IHAVE with [ffcbf7387375ae06a87336744f6bf7f9d6e8f905] from peer[12] at 127.0.0.1:48007
+	needs: ['8492d9ebfa75967906856426ecaf8f6fee35680d', 'ffcbf7387375ae06a87336744f6bf7f9d6e8f905']
+time:   0.311695s   Agreed to establish connection with peer[12] at 127.0.0.1:48007
+time:   0.523829s   Inserted DATA[seq=  1] into buffer, total seqs 1
+time:   0.524385s   Sent*    ACK [ack=  1] to peer[12] at 127.0.0.1:48007
+time:   0.524555s   Received DATA[seq=  1][bound=  1][next=  2] from peer[12] at 127.0.0.1:48007
+time:   0.738421s   Inserted DATA[seq=  2] into buffer, total seqs 2
+time:   0.738626s   Sent*    ACK [ack=  2] to peer[12] at 127.0.0.1:48007
+time:   0.738721s   Received DATA[seq=  2][bound=  2][next=  3] from peer[12] at 127.0.0.1:48007
+time:   0.833287s   Inserted DATA[seq=  3] into buffer, total seqs 3
+time:   0.833642s   Sent*    ACK [ack=  3] to peer[12] at 127.0.0.1:48007
+time:   0.833819s   Received DATA[seq=  3][bound=  3][next=  4] from peer[12] at 127.0.0.1:48007
+time:   0.915482s   Received WHOHAS requesting for [354e2ea443bc30611c85175d5d0506f06e2c2644] from peer[10] at 127.0.0.1:48005
+	has: ['4055c5c46cd3bd3b37759f1b8e8c46de7e307fe6', '45121c739a3815b01ea6a817b0aa59a94ef2cdd3', '7d9de0eff08dca52e90cab8f5cddfa8cb9550406', '2f6b0fff14fb6d04b1472d6cd10c909d0af7885a']
+time:   0.950429s   Inserted DATA[seq=  4] into buffer, total seqs 4
+time:   0.950821s   Sent*    ACK [ack=  4] to peer[12] at 127.0.0.1:48007
+time:   0.950990s   Received DATA[seq=  4][bound=  4][next=  5] from peer[12] at 127.0.0.1:48007
+time:   1.015093s   Received WHOHAS requesting for [d003141f29f1aeb491f398f4f98ed13a30be9408] from peer[ 1] at 127.0.0.1:48001
+	has: ['4055c5c46cd3bd3b37759f1b8e8c46de7e307fe6', '45121c739a3815b01ea6a817b0aa59a94ef2cdd3', '7d9de0eff08dca52e90cab8f5cddfa8cb9550406', '2f6b0fff14fb6d04b1472d6cd10c909d0af7885a']
+time:   1.053278s   Inserted DATA[seq=  5] into buffer, total seqs 5
+time:   1.053578s   Sent*    ACK [ack=  5] to peer[12] at 127.0.0.1:48007
+time:   1.053720s   Received DATA[seq=  5][bound=  5][next=  6] from peer[12] at 127.0.0.1:48007
+time:   1.116120s   Received WHOHAS requesting for [0637dfeb4b30593b1fe4271e0db6cd24ad198ab7] from peer[ 7] at 127.0.0.1:48003
+	has: ['4055c5c46cd3bd3b37759f1b8e8c46de7e307fe6', '45121c739a3815b01ea6a817b0aa59a94ef2cdd3', '7d9de0eff08dca52e90cab8f5cddfa8cb9550406', '2f6b0fff14fb6d04b1472d6cd10c909d0af7885a']
+time:   1.156649s   Inserted DATA[seq=  6] into buffer, total seqs 6
+time:   1.157038s   Sent*    ACK [ack=  6] to peer[12] at 127.0.0.1:48007
+time:   1.157188s   Received DATA[seq=  6][bound=  6][next=  7] from peer[12] at 127.0.0.1:48007
+time:   1.173275s   Inserted DATA[seq=  7] into buffer, total seqs 7
+time:   1.173488s   Sent*    ACK [ack=  7] to peer[12] at 127.0.0.1:48007
+time:   1.173580s   Received DATA[seq=  7][bound=  7][next=  8] from peer[12] at 127.0.0.1:48007
+time:   1.223235s   Received WHOHAS requesting for [0cabb7ca8300b66e0d5d3bf2b16d0f28de3e2c4b] from peer[ 7] at 127.0.0.1:48003
+	has: ['4055c5c46cd3bd3b37759f1b8e8c46de7e307fe6', '45121c739a3815b01ea6a817b0aa59a94ef2cdd3', '7d9de0eff08dca52e90cab8f5cddfa8cb9550406', '2f6b0fff14fb6d04b1472d6cd10c909d0af7885a']
+time:   1.275959s   Inserted DATA[seq=  8] into buffer, total seqs 8
+time:   1.276152s   Sent*    ACK [ack=  8] to peer[12] at 127.0.0.1:48007
+time:   1.276261s   Received DATA[seq=  8][bound=  8][next=  9] from peer[12] at 127.0.0.1:48007
+time:   1.284412s   Inserted DATA[seq=  9] into buffer, total seqs 9
+time:   1.284793s   Sent*    ACK [ack=  9] to peer[12] at 127.0.0.1:48007
+time:   1.284918s   Received DATA[seq=  9][bound=  9][next= 10] from peer[12] at 127.0.0.1:48007
+time:   1.384572s   Inserted DATA[seq= 10] into buffer, total seqs 10
+time:   1.384820s   Sent*    ACK [ack= 10] to peer[12] at 127.0.0.1:48007
+time:   1.384948s   Received DATA[seq= 10][bound= 10][next= 11] from peer[12] at 127.0.0.1:48007
+time:   1.405198s   Inserted DATA[seq= 11] into buffer, total seqs 11
+time:   1.405909s   Sent*    ACK [ack= 11] to peer[12] at 127.0.0.1:48007
+time:   1.406100s   Received DATA[seq= 11][bound= 11][next= 12] from peer[12] at 127.0.0.1:48007
+time:   1.504585s   Inserted DATA[seq= 12] into buffer, total seqs 12
+time:   1.504819s   Sent*    ACK [ack= 12] to peer[12] at 127.0.0.1:48007
+time:   1.504908s   Received DATA[seq= 12][bound= 12][next= 13] from peer[12] at 127.0.0.1:48007
+time:   1.513541s   Inserted DATA[seq= 13] into buffer, total seqs 13
+time:   1.513905s   Sent*    ACK [ack= 13] to peer[12] at 127.0.0.1:48007
+time:   1.514116s   Received DATA[seq= 13][bound= 13][next= 14] from peer[12] at 127.0.0.1:48007
+time:   1.615503s   Inserted DATA[seq= 14] into buffer, total seqs 14
+time:   1.615903s   Sent*    ACK [ack= 14] to peer[12] at 127.0.0.1:48007
+time:   1.616078s   Received DATA[seq= 14][bound= 14][next= 15] from peer[12] at 127.0.0.1:48007
+time:   1.635465s   Inserted DATA[seq= 15] into buffer, total seqs 15
+time:   1.635835s   Sent*    ACK [ack= 15] to peer[12] at 127.0.0.1:48007
+time:   1.636000s   Received DATA[seq= 15][bound= 15][next= 16] from peer[12] at 127.0.0.1:48007
+time:   1.734112s   Inserted DATA[seq= 16] into buffer, total seqs 16
+time:   1.734368s   Sent*    ACK [ack= 16] to peer[12] at 127.0.0.1:48007
+time:   1.734469s   Received DATA[seq= 16][bound= 16][next= 17] from peer[12] at 127.0.0.1:48007
+time:   1.742561s   Inserted DATA[seq= 17] into buffer, total seqs 17
+time:   1.742798s   Sent*    ACK [ack= 17] to peer[12] at 127.0.0.1:48007
+time:   1.742897s   Received DATA[seq= 17][bound= 17][next= 18] from peer[12] at 127.0.0.1:48007
+time:   1.826650s   Received IHAVE with [8492d9ebfa75967906856426ecaf8f6fee35680d] from peer[14] at 127.0.0.1:48004
+	needs: ['8492d9ebfa75967906856426ecaf8f6fee35680d']
+time:   1.826858s   Agreed to establish connection with peer[14] at 127.0.0.1:48004
+time:   1.847661s   Inserted DATA[seq= 18] into buffer, total seqs 18
+time:   1.848062s   Sent*    ACK [ack= 18] to peer[12] at 127.0.0.1:48007
+time:   1.848244s   Received DATA[seq= 18][bound= 18][next= 19] from peer[12] at 127.0.0.1:48007
+time:   1.858882s   Inserted DATA[seq= 19] into buffer, total seqs 19
+time:   1.859296s   Sent*    ACK [ack= 19] to peer[12] at 127.0.0.1:48007
+time:   1.859476s   Received DATA[seq= 19][bound= 19][next= 20] from peer[12] at 127.0.0.1:48007
+time:   1.875030s   Inserted DATA[seq= 20] into buffer, total seqs 20
+time:   1.875548s   Sent*    ACK [ack= 20] to peer[12] at 127.0.0.1:48007
+time:   1.875723s   Received DATA[seq= 20][bound= 20][next= 21] from peer[12] at 127.0.0.1:48007
+time:   1.971313s   Inserted DATA[seq= 21] into buffer, total seqs 21
+time:   1.971752s   Sent*    ACK [ack= 21] to peer[12] at 127.0.0.1:48007
+time:   1.971895s   Received DATA[seq= 21][bound= 21][next= 22] from peer[12] at 127.0.0.1:48007
+time:   1.989399s   Inserted DATA[seq= 22] into buffer, total seqs 22
+time:   1.989809s   Sent*    ACK [ack= 22] to peer[12] at 127.0.0.1:48007
+time:   1.989976s   Received DATA[seq= 22][bound= 22][next= 23] from peer[12] at 127.0.0.1:48007
