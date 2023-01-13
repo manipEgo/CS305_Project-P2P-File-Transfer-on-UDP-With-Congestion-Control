@@ -39,7 +39,7 @@ def crash_session():
         os.remove("test/tmp4/download_result.fragment")
 
     stime = time.time()
-    crash_session = grader.GradingSession(grader.normal_handler, latency=0.01, spiffy=False, topo_map="test/tmp4/topo4.map", nodes_map="test/tmp4/nodes4.map")
+    crash_session = grader.GradingSession(grader.normal_handler, latency=0.01, spiffy=True, topo_map="test/tmp4/topo4.map", nodes_map="test/tmp4/nodes4.map")
     crash_session.add_peer(1, "src/peer.py", "test/tmp4/nodes4.map", "test/tmp4/data4-1.fragment", 100, ("127.0.0.1", 48001), timeout=None)
     crash_session.add_peer(2, "src/peer.py", "test/tmp4/nodes4.map", "test/tmp4/data4-2.fragment", 100, ("127.0.0.1", 48002), timeout=None)
     crash_session.add_peer(3, "src/peer.py", "test/tmp4/nodes4.map", "test/tmp4/data4-2.fragment", 100, ("127.0.0.1", 48003), timeout=None)

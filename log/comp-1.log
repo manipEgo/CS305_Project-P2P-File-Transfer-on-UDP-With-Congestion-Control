@@ -1,0 +1,110 @@
+time:   0.001793s   Routine broadcasting for d003141f29f1aeb491f398f4f98ed13a30be9408
+time:   0.209295s   Received IHAVE with [d003141f29f1aeb491f398f4f98ed13a30be9408] from peer[ 2] at 127.0.0.1:48002
+	needs: ['d003141f29f1aeb491f398f4f98ed13a30be9408']
+time:   0.209546s   Agreed to establish connection with peer[ 2] at 127.0.0.1:48002
+time:   0.422272s   Inserted DATA[seq=  1] into buffer, total seqs 1
+time:   0.422841s   Sent*    ACK [ack=  1] to peer[ 2] at 127.0.0.1:48002
+time:   0.423011s   Received DATA[seq=  1][bound=  1][next=  2] from peer[ 2] at 127.0.0.1:48002
+time:   0.612035s   Received WHOHAS requesting for [354e2ea443bc30611c85175d5d0506f06e2c2644] from peer[10] at 127.0.0.1:48005
+	has: ['7742769857685f963a9c1a5d746b831c5dc86271', 'a53ceb3303063d0364d5b325c96335f2bba0e942']
+time:   0.636180s   Inserted DATA[seq=  2] into buffer, total seqs 2
+time:   0.636702s   Sent*    ACK [ack=  2] to peer[ 2] at 127.0.0.1:48002
+time:   0.636870s   Received DATA[seq=  2][bound=  2][next=  3] from peer[ 2] at 127.0.0.1:48002
+time:   0.730582s   Inserted DATA[seq=  3] into buffer, total seqs 3
+time:   0.730858s   Sent*    ACK [ack=  3] to peer[ 2] at 127.0.0.1:48002
+time:   0.730956s   Received DATA[seq=  3][bound=  3][next=  4] from peer[ 2] at 127.0.0.1:48002
+time:   0.813774s   Received WHOHAS requesting for [0637dfeb4b30593b1fe4271e0db6cd24ad198ab7] from peer[ 7] at 127.0.0.1:48003
+	has: ['7742769857685f963a9c1a5d746b831c5dc86271', 'a53ceb3303063d0364d5b325c96335f2bba0e942']
+time:   0.850005s   Inserted DATA[seq=  4] into buffer, total seqs 4
+time:   0.850533s   Sent*    ACK [ack=  4] to peer[ 2] at 127.0.0.1:48002
+time:   0.850699s   Received DATA[seq=  4][bound=  4][next=  5] from peer[ 2] at 127.0.0.1:48002
+time:   0.914958s   Received WHOHAS requesting for [0cabb7ca8300b66e0d5d3bf2b16d0f28de3e2c4b] from peer[ 7] at 127.0.0.1:48003
+	has: ['7742769857685f963a9c1a5d746b831c5dc86271', 'a53ceb3303063d0364d5b325c96335f2bba0e942']
+time:   0.932773s   Inserted DATA[seq=  5] into buffer, total seqs 5
+time:   0.933216s   Sent*    ACK [ack=  5] to peer[ 2] at 127.0.0.1:48002
+time:   0.933392s   Received DATA[seq=  5][bound=  5][next=  6] from peer[ 2] at 127.0.0.1:48002
+time:   0.962753s   Inserted DATA[seq=  6] into buffer, total seqs 6
+time:   0.963108s   Sent*    ACK [ack=  6] to peer[ 2] at 127.0.0.1:48002
+time:   0.963256s   Received DATA[seq=  6][bound=  6][next=  7] from peer[ 2] at 127.0.0.1:48002
+time:   1.016208s   Received WHOHAS requesting for [8492d9ebfa75967906856426ecaf8f6fee35680d] from peer[13] at 127.0.0.1:48008
+	has: ['7742769857685f963a9c1a5d746b831c5dc86271', 'a53ceb3303063d0364d5b325c96335f2bba0e942']
+time:   1.043002s   Inserted DATA[seq=  7] into buffer, total seqs 7
+time:   1.043344s   Sent*    ACK [ack=  7] to peer[ 2] at 127.0.0.1:48002
+time:   1.043495s   Received DATA[seq=  7][bound=  7][next=  8] from peer[ 2] at 127.0.0.1:48002
+time:   1.078160s   Inserted DATA[seq=  8] into buffer, total seqs 8
+time:   1.078416s   Sent*    ACK [ack=  8] to peer[ 2] at 127.0.0.1:48002
+time:   1.078511s   Received DATA[seq=  8][bound=  8][next=  9] from peer[ 2] at 127.0.0.1:48002
+time:   1.120784s   Received WHOHAS requesting for [ffcbf7387375ae06a87336744f6bf7f9d6e8f905] from peer[13] at 127.0.0.1:48008
+	has: ['7742769857685f963a9c1a5d746b831c5dc86271', 'a53ceb3303063d0364d5b325c96335f2bba0e942']
+time:   1.146496s   Inserted DATA[seq=  9] into buffer, total seqs 9
+time:   1.146768s   Sent*    ACK [ack=  9] to peer[ 2] at 127.0.0.1:48002
+time:   1.147103s   Received DATA[seq=  9][bound=  9][next= 10] from peer[ 2] at 127.0.0.1:48002
+time:   1.173168s   Inserted DATA[seq= 10] into buffer, total seqs 10
+time:   1.173396s   Sent*    ACK [ack= 10] to peer[ 2] at 127.0.0.1:48002
+time:   1.173500s   Received DATA[seq= 10][bound= 10][next= 11] from peer[ 2] at 127.0.0.1:48002
+time:   1.203313s   Inserted DATA[seq= 11] into buffer, total seqs 11
+time:   1.203552s   Sent*    ACK [ack= 11] to peer[ 2] at 127.0.0.1:48002
+time:   1.203646s   Received DATA[seq= 11][bound= 11][next= 12] from peer[ 2] at 127.0.0.1:48002
+time:   1.259341s   Inserted DATA[seq= 12] into buffer, total seqs 12
+time:   1.259589s   Sent*    ACK [ack= 12] to peer[ 2] at 127.0.0.1:48002
+time:   1.259678s   Received DATA[seq= 12][bound= 12][next= 13] from peer[ 2] at 127.0.0.1:48002
+time:   1.282427s   Inserted DATA[seq= 13] into buffer, total seqs 13
+time:   1.282884s   Sent*    ACK [ack= 13] to peer[ 2] at 127.0.0.1:48002
+time:   1.283017s   Received DATA[seq= 13][bound= 13][next= 14] from peer[ 2] at 127.0.0.1:48002
+time:   1.314747s   Inserted DATA[seq= 14] into buffer, total seqs 14
+time:   1.315010s   Sent*    ACK [ack= 14] to peer[ 2] at 127.0.0.1:48002
+time:   1.315123s   Received DATA[seq= 14][bound= 14][next= 15] from peer[ 2] at 127.0.0.1:48002
+time:   1.385167s   Inserted DATA[seq= 15] into buffer, total seqs 15
+time:   1.385400s   Sent*    ACK [ack= 15] to peer[ 2] at 127.0.0.1:48002
+time:   1.385518s   Received DATA[seq= 15][bound= 15][next= 16] from peer[ 2] at 127.0.0.1:48002
+time:   1.411001s   Inserted DATA[seq= 16] into buffer, total seqs 16
+time:   1.411282s   Sent*    ACK [ack= 16] to peer[ 2] at 127.0.0.1:48002
+time:   1.411400s   Received DATA[seq= 16][bound= 16][next= 17] from peer[ 2] at 127.0.0.1:48002
+time:   1.447841s   Inserted DATA[seq= 17] into buffer, total seqs 17
+time:   1.448085s   Sent*    ACK [ack= 17] to peer[ 2] at 127.0.0.1:48002
+time:   1.448187s   Received DATA[seq= 17][bound= 17][next= 18] from peer[ 2] at 127.0.0.1:48002
+time:   1.497330s   Inserted DATA[seq= 18] into buffer, total seqs 18
+time:   1.497526s   Sent*    ACK [ack= 18] to peer[ 2] at 127.0.0.1:48002
+time:   1.497608s   Received DATA[seq= 18][bound= 18][next= 19] from peer[ 2] at 127.0.0.1:48002
+time:   1.519575s   Inserted DATA[seq= 19] into buffer, total seqs 19
+time:   1.519957s   Sent*    ACK [ack= 19] to peer[ 2] at 127.0.0.1:48002
+time:   1.520125s   Received DATA[seq= 19][bound= 19][next= 20] from peer[ 2] at 127.0.0.1:48002
+time:   1.554835s   Inserted DATA[seq= 20] into buffer, total seqs 20
+time:   1.555317s   Sent*    ACK [ack= 20] to peer[ 2] at 127.0.0.1:48002
+time:   1.555498s   Received DATA[seq= 20][bound= 20][next= 21] from peer[ 2] at 127.0.0.1:48002
+time:   1.623289s   Inserted DATA[seq= 21] into buffer, total seqs 21
+time:   1.623619s   Sent*    ACK [ack= 21] to peer[ 2] at 127.0.0.1:48002
+time:   1.623783s   Received DATA[seq= 21][bound= 21][next= 22] from peer[ 2] at 127.0.0.1:48002
+time:   1.648702s   Inserted DATA[seq= 22] into buffer, total seqs 22
+time:   1.649077s   Sent*    ACK [ack= 22] to peer[ 2] at 127.0.0.1:48002
+time:   1.649253s   Received DATA[seq= 22][bound= 22][next= 23] from peer[ 2] at 127.0.0.1:48002
+time:   1.683582s   Inserted DATA[seq= 23] into buffer, total seqs 23
+time:   1.683932s   Sent*    ACK [ack= 23] to peer[ 2] at 127.0.0.1:48002
+time:   1.684101s   Received DATA[seq= 23][bound= 23][next= 24] from peer[ 2] at 127.0.0.1:48002
+time:   1.739557s   Inserted DATA[seq= 24] into buffer, total seqs 24
+time:   1.739765s   Sent*    ACK [ack= 24] to peer[ 2] at 127.0.0.1:48002
+time:   1.739858s   Received DATA[seq= 24][bound= 24][next= 25] from peer[ 2] at 127.0.0.1:48002
+time:   1.758576s   Inserted DATA[seq= 25] into buffer, total seqs 25
+time:   1.758946s   Sent*    ACK [ack= 25] to peer[ 2] at 127.0.0.1:48002
+time:   1.759137s   Received DATA[seq= 25][bound= 25][next= 26] from peer[ 2] at 127.0.0.1:48002
+time:   1.794398s   Inserted DATA[seq= 26] into buffer, total seqs 26
+time:   1.794737s   Sent*    ACK [ack= 26] to peer[ 2] at 127.0.0.1:48002
+time:   1.794907s   Received DATA[seq= 26][bound= 26][next= 27] from peer[ 2] at 127.0.0.1:48002
+time:   1.859859s   Inserted DATA[seq= 27] into buffer, total seqs 27
+time:   1.860193s   Sent*    ACK [ack= 27] to peer[ 2] at 127.0.0.1:48002
+time:   1.860370s   Received DATA[seq= 27][bound= 27][next= 28] from peer[ 2] at 127.0.0.1:48002
+time:   1.891702s   Inserted DATA[seq= 28] into buffer, total seqs 28
+time:   1.892252s   Sent*    ACK [ack= 28] to peer[ 2] at 127.0.0.1:48002
+time:   1.892425s   Received DATA[seq= 28][bound= 28][next= 29] from peer[ 2] at 127.0.0.1:48002
+time:   1.926557s   Inserted DATA[seq= 29] into buffer, total seqs 29
+time:   1.926947s   Sent*    ACK [ack= 29] to peer[ 2] at 127.0.0.1:48002
+time:   1.927084s   Received DATA[seq= 29][bound= 29][next= 30] from peer[ 2] at 127.0.0.1:48002
+time:   1.978194s   Inserted DATA[seq= 30] into buffer, total seqs 30
+time:   1.978556s   Sent*    ACK [ack= 30] to peer[ 2] at 127.0.0.1:48002
+time:   1.978736s   Received DATA[seq= 30][bound= 30][next= 31] from peer[ 2] at 127.0.0.1:48002
+time:   1.995569s   Inserted DATA[seq= 31] into buffer, total seqs 31
+time:   1.995825s   Sent*    ACK [ack= 31] to peer[ 2] at 127.0.0.1:48002
+time:   1.995959s   Received DATA[seq= 31][bound= 31][next= 32] from peer[ 2] at 127.0.0.1:48002
+time:   2.031474s   Inserted DATA[seq= 32] into buffer, total seqs 32
+time:   2.031727s   Sent*    ACK [ack= 32] to peer[ 2] at 127.0.0.1:48002
+time:   2.031842s   Received DATA[seq= 32][bound= 32][next= 33] from peer[ 2] at 127.0.0.1:48002
